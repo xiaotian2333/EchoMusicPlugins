@@ -57,19 +57,29 @@ pnpm exec electron . --safe-mode
   "version": "1.0.0",
   "description": "EchoMusic 插件示例",
   "author": "EchoMusic User",
+  "icon": "icon.svg",
   "main": "index.js",
   "style": "style.css",
-  "contributes": {
-    "image": "icon.svg",
-    "runInMiniPlayer": false
+  "runtime": {
+    "miniPlayer": false,
+    "desktopLyric": false
+  },
+  "requires": {
+    "echoMusicVersion": ">=2.2.6-beta.9"
   }
 }
 ```
 
 `main` 默认为 `index.js`，支持 `.js` / `.mjs`。`style` 可选，仅支持 `.css`。
-`contributes.image` 可选，用于插件管理页卡片图标，建议使用插件根目录下的 `icon.svg`。该字段也支持插件目录内的相对图片路径、`https` 图片和 `data:image/*`。`contributes.icon` 作为历史兼容字段仍会被识别，新插件请优先使用 `contributes.image`。
+`icon` 可选，用于插件管理页卡片图标，建议使用插件根目录下的 `icon.svg`。该字段支持插件目录内的相对图片路径、`https` 图片和 `data:image/*`。
 
-`contributes.runInMiniPlayer` 可选。设为 `true` 后，EchoMusic 会在 mini 播放器窗口中单独加载该插件。mini 是独立窗口，只需要影响主窗口的插件不应开启该项；如果插件同时影响主窗口和 mini 窗口，需要把两边看成两个独立运行时，它们不共享 JS 内存。
+`runtime.miniPlayer` 可选。设为 `true` 后，EchoMusic 会在 mini 播放器窗口中单独加载该插件。mini 是独立窗口，只需要影响主窗口的插件不应开启该项；如果插件同时影响主窗口和 mini 窗口，需要把两边看成两个独立运行时，它们不共享 JS 内存。
+
+`runtime.desktopLyric` 可选。设为 `true` 后，EchoMusic 会在桌面歌词窗口中单独加载该插件。桌面歌词同样是独立窗口，只需要影响主窗口或 mini 窗口的插件不应开启该项。
+
+`requires.echoMusicVersion` 可选，表示插件要求的 EchoMusic 主程序版本范围，使用 semver range。常见写法是 `>=2.2.6`；如果插件明确不支持下一个大版本，也可以写 `>=2.2.6 <3`。如果只写 `2.2.6`，EchoMusic 会按 `>=2.2.6` 处理。版本范围写错会被标记为 manifest 无效；范围有效但当前主程序不满足时，插件管理页会提示“版本不兼容”并阻止启用。
+
+`contributes.windows` 可选，用于声明由主进程创建的插件独立浮窗，详见 [插件浮窗与 Now Playing](docs/plugin-windows.md)。
 
 ## 最小插件
 
@@ -77,25 +87,51 @@ pnpm exec electron . --safe-mode
 export function activate(ctx) {
   ctx.toast.success(`${ctx.manifest.name} 已启用`);
 
+  const { defineAsyncComponent, defineComponent, h, ref } = ctx.vue;
+  const Button = defineAsyncComponent(ctx.ui.components.Button);
+  const Switch = defineAsyncComponent(ctx.ui.components.Switch);
+
+  const SettingsPanel = defineComponent({
+    setup() {
+      const enabled = ref(true);
+
+      ctx.storage.get("settings").then((saved) => {
+        if (saved && typeof saved.enabled === "boolean") {
+          enabled.value = saved.enabled;
+        }
+      });
+
+      const save = async () => {
+        await ctx.storage.set("settings", { enabled: enabled.value });
+        ctx.toast.info(enabled.value ? "提示已启用" : "提示已关闭");
+      };
+
+      return () =>
+        h("div", { style: "display: grid; gap: 12px;" }, [
+          h(
+            "label",
+            {
+              style:
+                "display: flex; justify-content: space-between; gap: 12px;",
+            },
+            [
+              h("span", "启用提示"),
+              h(Switch, {
+                modelValue: enabled.value,
+                "onUpdate:modelValue": (value) => {
+                  enabled.value = Boolean(value);
+                },
+              }),
+            ],
+          ),
+          h(Button, { size: "xs", onClick: save }, { default: () => "保存" }),
+        ]);
+    },
+  });
+
   ctx.ui.settings.define({
     title: "Hello Echo 设置",
-    sections: [
-      {
-        id: "general",
-        title: "常规",
-        fields: [
-          {
-            key: "enabled",
-            type: "switch",
-            label: "启用提示",
-            default: true,
-          },
-        ],
-      },
-    ],
-    onChange(values) {
-      ctx.toast.info(values.enabled ? "提示已启用" : "提示已关闭");
-    },
+    component: SettingsPanel,
   });
 
   ctx.ui.addSongContextMenuItem({
@@ -133,6 +169,7 @@ export default {
       title: "Hello Echo",
       icon: "tabler:sparkles",
       component: Page,
+      sidebar: true,
     });
   },
 };
@@ -171,7 +208,8 @@ export default {
 | `ctx.events.onPlaybackChange(handler)`                                | 监听播放/暂停状态变化                                                                                                                                                                                                     |
 | `ctx.dom.query(selector)` / `ctx.dom.queryAll(selector)`              | 查询主界面 DOM                                                                                                                                                                                                            |
 | `ctx.dom.observe(selector, handler)`                                  | 监听动态出现的 DOM，禁用插件时自动断开                                                                                                                                                                                    |
-| `ctx.ui.settings.define(schema)`                                      | 声明插件设置 schema，由插件管理页统一渲染、保存并回调                                                                                                                                                                     |
+| `ctx.ui.settings.define(options)`                                     | 声明插件设置入口，必须提供自定义 Vue 组件                                                                                                                                                                                 |
+| `ctx.ui.sidebar.addItem(item)`                                        | 注册正式侧边栏导航入口，支持路由匹配、高亮和折叠侧栏图标                                                                                                                                                                  |
 | `ctx.ui.cover.setFallback(resolver)`                                  | 设置无封面或封面加载失败时的兜底图片 URL，resolver 必须同步返回字符串                                                                                                                                                     |
 | `ctx.ui.components`                                                   | 异步加载宿主 UI 组件：`Avatar`、`Badge`、`Button`、`Cover`、`Dialog`、`Drawer`、`Input`、`InputNumber`、`Popover`、`Scrollbar`、`Select`、`Slider`、`Switch`、`Tabs`、`TabsContent`、`TabsList`、`TabsTrigger`、`Tooltip` |
 | `ctx.icons`                                                           | 宿主图标库（Iconify 格式）                                                                                                                                                                                                |
@@ -223,8 +261,9 @@ h(Icon, { icon: ctx.icons.iconPictureInPicture, width: 16, height: 16 });
 
 插件既可以用稳定的宿主贡献 API，也可以直接介入主界面 DOM。
 
-- `ctx.ui.addPage(...)`：注册完整插件页面，可通过 `/main/plugin/:pluginId/:pageId` 访问。
-- `ctx.ui.settings.define(...)`：声明插件设置，由插件管理页统一渲染、保存并在变更后回调插件。
+- `ctx.ui.addPage(...)`：注册完整插件页面，可通过 `/main/plugin/:pluginId/:pageId` 访问；传入 `sidebar` 后会同时注册正式侧边栏入口。
+- `ctx.ui.sidebar.addItem(...)`：为插件页面或自定义动作注册正式侧边栏导航入口，支持路由匹配、高亮和折叠侧栏图标。
+- `ctx.ui.settings.define(...)`：声明插件设置入口，传入自定义 Vue 组件自由渲染。
 - `ctx.ui.cover.setFallback(...)`：设置无封面或封面加载失败时的显示图片。
 - `ctx.ui.addSongContextMenuItem(...)`：注册歌曲右键菜单项。
 - `ctx.ui.mount(selectorOrElement, component, options)`：把 Vue 组件挂载到任意 DOM 位置。
@@ -263,106 +302,148 @@ export function activate(ctx) {
     title: "Hello Echo",
     icon: "tabler:sparkles",
     component: Page,
+    sidebar: {
+      section: "plugins",
+      sectionTitle: "插件",
+      order: 10,
+    },
   });
 
   ctx.router.push(`/main/plugin/${encodeURIComponent(ctx.id)}/home`);
 }
 ```
 
-## 统一设置示例
+`sidebar` 也可以简写为 `true`，此时入口会使用页面的 `id`、`title`、`icon` 并放入默认的“插件”分组。如果页面已经注册，也可以单独调用 `ctx.ui.sidebar.addItem(...)`：
 
-插件设置应优先使用 `ctx.ui.settings.define(...)`。设置入口会显示在插件管理页对应插件卡片上。宿主会读取插件私有存储中的 `settings`、合并字段默认值、统一渲染表单，用户点击保存后写回 `ctx.storage` 并调用 `onChange(values)`。
+```js
+ctx.ui.sidebar.addItem({
+  id: "home-entry",
+  title: "Hello Echo",
+  icon: "tabler:sparkles",
+  pageId: "home",
+  section: "plugins",
+  order: 10,
+});
+```
+
+## 插件设置示例
+
+插件设置入口会显示在插件管理页对应插件卡片上。设置页需要提供自定义 Vue 组件；组件可以通过 `ctx.ui.components` 复用 EchoMusic 的现成控件，也可以自己组织布局、读取和保存设置。
 
 ```js
 export function activate(ctx) {
-  ctx.ui.settings.define({
-    title: "Hello Echo 设置",
-    description: "这些设置显示在插件管理页的统一设置对话框中。",
-    sections: [
-      {
-        id: "general",
-        title: "常规",
-        fields: [
-          { key: "enabled", type: "switch", label: "启用", default: true },
-          { key: "name", type: "text", label: "名称", default: "Hello Echo" },
-          {
-            key: "opacity",
-            type: "slider",
-            label: "透明度",
-            min: 0,
-            max: 100,
-            step: 1,
-            unit: "%",
-            default: 80,
-          },
-          {
-            key: "mode",
-            type: "select",
-            label: "模式",
-            default: "normal",
-            width: 360,
+  const { defineAsyncComponent, defineComponent, h, reactive } = ctx.vue;
+  const Button = defineAsyncComponent(ctx.ui.components.Button);
+  const Input = defineAsyncComponent(ctx.ui.components.Input);
+  const Select = defineAsyncComponent(ctx.ui.components.Select);
+  const Slider = defineAsyncComponent(ctx.ui.components.Slider);
+  const Switch = defineAsyncComponent(ctx.ui.components.Switch);
+
+  const defaults = {
+    enabled: true,
+    name: "Hello Echo",
+    opacity: 80,
+    mode: "normal",
+    folderPath: "",
+  };
+
+  const SettingsPanel = defineComponent({
+    setup() {
+      const draft = reactive({ ...defaults });
+
+      ctx.storage.get("settings").then((saved) => {
+        if (saved && typeof saved === "object") {
+          Object.assign(draft, { ...defaults, ...saved });
+        }
+      });
+
+      const save = async () => {
+        await ctx.storage.set("settings", { ...draft });
+        ctx.toast.success("设置已保存");
+      };
+
+      const selectFolder = async () => {
+        const result = await ctx.dialog.selectDirectory({
+          title: "选择插件文件夹",
+        });
+        if (!result.canceled && result.paths[0]) {
+          draft.folderPath = result.paths[0];
+        }
+      };
+
+      return () =>
+        h("div", { style: "display: grid; gap: 12px;" }, [
+          h(
+            "label",
+            {
+              style:
+                "display: flex; justify-content: space-between; gap: 12px;",
+            },
+            [
+              h("span", "启用"),
+              h(Switch, {
+                modelValue: draft.enabled,
+                "onUpdate:modelValue": (value) => {
+                  draft.enabled = Boolean(value);
+                },
+              }),
+            ],
+          ),
+          h(Input, {
+            modelValue: draft.name,
+            placeholder: "名称",
+            "onUpdate:modelValue": (value) => {
+              draft.name = String(value ?? "");
+            },
+          }),
+          h(Select, {
+            modelValue: draft.mode,
             options: [
               { label: "普通", value: "normal" },
               { label: "紧凑", value: "compact" },
             ],
-          },
-          {
-            key: "folderPath",
-            type: "directory",
-            label: "文件夹",
-            default: "",
-          },
-          {
-            key: "imageFiles",
-            type: "file",
-            label: "图片文件",
-            multiple: true,
-            filters: [{ name: "Images", extensions: ["jpg", "png", "webp"] }],
-            default: [],
-          },
-        ],
-      },
-    ],
-    onChange(values) {
-      console.log("插件设置已更新:", values);
+            "onUpdate:modelValue": (value) => {
+              draft.mode = value === "compact" ? "compact" : "normal";
+            },
+          }),
+          h(Slider, {
+            modelValue: draft.opacity,
+            min: 0,
+            max: 100,
+            step: 1,
+            showValue: true,
+            valueSuffix: "%",
+            "onUpdate:modelValue": (value) => {
+              draft.opacity = Number(value);
+            },
+          }),
+          h("div", { style: "display: flex; gap: 8px; align-items: center;" }, [
+            h(
+              "span",
+              { style: "flex: 1; overflow: hidden; text-overflow: ellipsis;" },
+              draft.folderPath || "未选择文件夹",
+            ),
+            h(
+              Button,
+              { variant: "outline", size: "xs", onClick: selectFolder },
+              { default: () => "选择" },
+            ),
+          ]),
+          h(Button, { size: "xs", onClick: save }, { default: () => "保存" }),
+        ]);
     },
+  });
+
+  ctx.ui.settings.define({
+    title: "Hello Echo 设置",
+    component: SettingsPanel,
   });
 }
 ```
 
-字段类型：
+文件和文件夹选择由插件组件主动调用 `ctx.dialog.selectFiles(...)` / `ctx.dialog.selectDirectory(...)`。设置里通常保存本地路径，不是可直接渲染的 `file://` URL；需要展示本地图片或文件时，先通过 `ctx.fs.getFileUrl(filePath)` 转换。
 
-| type        | 值类型                          | 说明                                             |
-| ----------- | ------------------------------- | ------------------------------------------------ |
-| `text`      | `string`                        | 单行文本                                         |
-| `textarea`  | `string`                        | 多行文本                                         |
-| `number`    | `number`                        | 数字输入，可配合 `min` / `max` / `step` / `unit` |
-| `slider`    | `number`                        | 滑块，可配合 `min` / `max` / `step` / `unit`     |
-| `switch`    | `boolean`                       | 开关                                             |
-| `select`    | `string` / `number` / `boolean` | 下拉选择，必须提供 `options`                     |
-| `file`      | `string` / `string[]`           | 文件路径；`multiple: true` 时保存为字符串数组    |
-| `directory` | `string`                        | 文件夹路径                                       |
-
-字段通用属性：
-
-| 属性                   | 说明                                                                                                     |
-| ---------------------- | -------------------------------------------------------------------------------------------------------- |
-| `key`                  | 必填，设置项保存和回调时使用的字段名                                                                     |
-| `type`                 | 必填，未知类型会按 `text` 处理                                                                           |
-| `label`                | 必填，设置项名称                                                                                         |
-| `description`          | 可选，设置项说明                                                                                         |
-| `placeholder`          | 可选，文本类控件占位提示                                                                                 |
-| `default`              | 可选，默认值；应使用 `string`、`number`、`boolean`、`string[]` 或 `null`                                 |
-| `unit`                 | 可选，数字和滑块的单位显示                                                                               |
-| `min` / `max` / `step` | 可选，数字和滑块的范围与步进                                                                             |
-| `multiple`             | 可选，仅 `file` 有效                                                                                     |
-| `width`                | 可选，控件宽度；支持数字 px 或有效 CSS 宽度字符串，例如 `360`、`"100%"`、`"24rem"`、`"min(100%, 420px)"` |
-| `filters`              | 可选，仅 `file` 有效；扩展名不需要写点号，例如 `png`                                                     |
-| `options`              | 可选，仅 `select` 有效；`value` 只能是字符串、数字或布尔值                                               |
-
-`file` / `directory` 会调用宿主文件选择 API，插件不需要自己处理系统对话框。设置里保存的是本地路径，不是可直接渲染的 `file://` URL；需要展示本地图片或文件时，先通过 `ctx.fs.getFileUrl(filePath)` 转换。
-
-设置值和跨窗口消息都应使用可克隆的普通数据。不要把 Vue `reactive` / `ref`、DOM 节点、函数、`File`、`Error` 等对象写入 `ctx.storage`、IPC 或 `BroadcastChannel`。如果插件开启了 `runInMiniPlayer` 并需要同步设置，建议先归一化并展开成普通对象：
+设置值和跨窗口消息都应使用可克隆的普通数据。不要把 Vue `reactive` / `ref`、DOM 节点、函数、`File`、`Error` 等对象写入 `ctx.storage`、IPC 或 `BroadcastChannel`。如果插件开启了 `runtime.miniPlayer` / `runtime.desktopLyric` 并需要同步设置，建议先归一化并展开成普通对象：
 
 ```js
 const broadcastSettings = (settings) => {

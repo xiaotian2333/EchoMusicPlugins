@@ -12,6 +12,8 @@
 
 ## 说明
 
-mini 播放器是独立窗口，因此本插件在 manifest 中声明了 `contributes.runInMiniPlayer: true`，EchoMusic 会在 mini 窗口中单独加载该插件。
+设置面板使用自定义 Vue 组件渲染，并复用 EchoMusic 的 `Switch`、`Input`、`Slider` 和 `Button` 控件。
+
+mini 播放器是独立窗口，因此本插件在 manifest 中声明了 `runtime.miniPlayer: true`，EchoMusic 会在 mini 窗口中单独加载该插件。
 
 主窗口和 mini 窗口是两个独立运行时，设置同步使用 `BroadcastChannel`，消息内容只发送归一化后的普通对象，避免 Vue 响应式对象导致浏览器无法克隆。

@@ -354,84 +354,237 @@ const mountMiniStrip = (ctx, miniInfoElement) => {
   };
 };
 
+const createSettingsComponent = (ctx) =>
+  ctx.vue.defineComponent({
+    name: "LyricInfoScrollSettings",
+    setup() {
+      const { h, reactive, ref, watch, computed, defineAsyncComponent } =
+        ctx.vue;
+      const Button = defineAsyncComponent(ctx.ui.components.Button);
+      const Input = defineAsyncComponent(ctx.ui.components.Input);
+      const Slider = defineAsyncComponent(ctx.ui.components.Slider);
+      const Switch = defineAsyncComponent(ctx.ui.components.Switch);
+      const draft = reactive(normalizeSettings(state?.settings));
+      const saving = ref(false);
+      const message = ref("");
+
+      watch(
+        () => state?.settings,
+        (settings) => {
+          if (settings && !saving.value) {
+            Object.assign(draft, normalizeSettings(settings));
+          }
+        },
+        { deep: true },
+      );
+
+      const setDraftValue = (key, value) => {
+        draft[key] = value;
+        message.value = "";
+      };
+      const targetCount = computed(
+        () =>
+          Number(Boolean(draft.showMainPlayerBar)) +
+          Number(Boolean(draft.showMiniPlayer)),
+      );
+      const previewText = computed(() => {
+        if (!draft.enabled) return "歌词滚动已停用";
+        const base = draft.emptyText.trim() || "正在播放的歌词会显示在这里";
+        return draft.showSecondary ? `${base} / 翻译或音译` : base;
+      });
+
+      const saveDraft = async () => {
+        if (saving.value) return;
+        saving.value = true;
+        try {
+          const next = normalizeSettings({ ...draft });
+          await ctx.storage.set(STORAGE_KEY, next);
+          await applySettings(ctx, next);
+          Object.assign(draft, next);
+          message.value = "设置已保存";
+          ctx.toast.success("信息区歌词滚动设置已保存");
+        } catch (error) {
+          const text = error instanceof Error ? error.message : "设置保存失败";
+          message.value = text;
+          ctx.toast.warning(text);
+        } finally {
+          saving.value = false;
+        }
+      };
+
+      const resetDraft = () => {
+        Object.assign(draft, normalizeSettings(DEFAULT_SETTINGS));
+        message.value = "已恢复默认，保存后生效";
+      };
+
+      const renderSwitchRow = (key, label, hint = "", options = {}) =>
+        h(
+          "div",
+          {
+            class: [
+              "echo-lyric-settings-row",
+              options.primary ? "is-primary" : "",
+            ],
+          },
+          [
+            h("div", { class: "echo-lyric-settings-copy" }, [
+              h("span", label),
+              hint ? h("small", hint) : null,
+            ]),
+            h(Switch, {
+              modelValue: Boolean(draft[key]),
+              "onUpdate:modelValue": (value) =>
+                setDraftValue(key, Boolean(value)),
+            }),
+          ],
+        );
+
+      const renderSection = (title, description, children) =>
+        h("section", { class: "echo-lyric-settings-section" }, [
+          h("div", { class: "echo-lyric-settings-section-heading" }, [
+            h("div", { class: "echo-lyric-settings-section-copy" }, [
+              h("h3", title),
+              description ? h("small", description) : null,
+            ]),
+          ]),
+          ...children,
+        ]);
+
+      const renderTargetGrid = () =>
+        h("div", { class: "echo-lyric-settings-targets" }, [
+          renderSwitchRow("showMainPlayerBar", "主播放器信息区"),
+          renderSwitchRow("showMiniPlayer", "mini 信息区"),
+        ]);
+
+      const renderPreview = () =>
+        h("section", { class: "echo-lyric-settings-preview" }, [
+          h("div", { class: "echo-lyric-settings-heading" }, [
+            h("h3", "显示预览"),
+            h(
+              "span",
+              {
+                class: [
+                  "echo-lyric-settings-pill",
+                  draft.enabled ? "is-active" : "",
+                ],
+              },
+              draft.enabled ? `${targetCount.value} 个区域` : "已停用",
+            ),
+          ]),
+          h(
+            "div",
+            {
+              class: [
+                "echo-lyric-preview-strip",
+                draft.enabled ? "" : "is-disabled",
+              ],
+              style: {
+                "--echo-lyric-preview-opacity": String(draft.opacity / 100),
+                "--echo-lyric-preview-duration": `${draft.scrollSpeed}s`,
+              },
+            },
+            [h("span", previewText.value)],
+          ),
+          h(
+            "span",
+            { class: "echo-lyric-settings-hint" },
+            "实际滚动距离会根据播放器信息区宽度和歌词长度自动计算。",
+          ),
+        ]);
+
+      const renderSliderField = (key, label, options) =>
+        h("label", { class: "echo-lyric-settings-field" }, [
+          h("span", { class: "echo-lyric-settings-label" }, label),
+          h(Slider, {
+            modelValue: Number(draft[key]),
+            min: options.min,
+            max: options.max,
+            step: options.step ?? 1,
+            showValue: true,
+            valueSuffix: options.suffix ?? "",
+            class: "echo-lyric-settings-slider",
+            "onUpdate:modelValue": (value) => setDraftValue(key, Number(value)),
+          }),
+        ]);
+
+      const renderButton = (label, props = {}) =>
+        h(Button, props, { default: () => label });
+
+      return () =>
+        h("div", { class: "echo-lyric-settings" }, [
+          renderPreview(),
+          renderSection("启用与范围", "选择在哪些播放器信息区替换歌曲名。", [
+            renderSwitchRow("enabled", "启用歌词滚动", "", {
+              primary: true,
+            }),
+            renderTargetGrid(),
+          ]),
+          renderSection("歌词内容", "控制副文本和无歌词时的展示。", [
+            renderSwitchRow(
+              "showSecondary",
+              "显示翻译或音译",
+              "按 EchoMusic 当前歌词偏好选择翻译和音译。",
+            ),
+            renderSwitchRow("showLoading", "显示加载状态"),
+            h("label", { class: "echo-lyric-settings-field" }, [
+              h("span", { class: "echo-lyric-settings-label" }, "空歌词文案"),
+              h(Input, {
+                modelValue: draft.emptyText,
+                placeholder: "留空则隐藏",
+                class: "echo-lyric-settings-input",
+                "onUpdate:modelValue": (value) =>
+                  setDraftValue("emptyText", String(value ?? "")),
+              }),
+            ]),
+          ]),
+          renderSection(
+            "动效",
+            "滚动速度越小越快，显示强度会影响信息区透明度。",
+            [
+              renderSliderField("scrollSpeed", "滚动速度", {
+                min: 5,
+                max: 24,
+                suffix: " 秒",
+              }),
+              renderSliderField("opacity", "显示强度", {
+                min: 30,
+                max: 100,
+                suffix: "%",
+              }),
+            ],
+          ),
+          h("div", { class: "echo-lyric-settings-footer" }, [
+            renderButton("恢复默认", {
+              variant: "ghost",
+              size: "xs",
+              disabled: saving.value,
+              onClick: resetDraft,
+            }),
+            renderButton(saving.value ? "保存中..." : "保存", {
+              variant: "primary",
+              size: "xs",
+              loading: saving.value,
+              disabled: saving.value,
+              onClick: saveDraft,
+            }),
+            message.value
+              ? h(
+                  "span",
+                  { class: "echo-lyric-settings-message" },
+                  message.value,
+                )
+              : null,
+          ]),
+        ]);
+    },
+  });
+
 const registerSettings = (ctx) => {
   settingsDispose?.();
   settingsDispose = ctx.ui.settings.define({
     title: "信息区歌词滚动",
     description: "用当前歌词替换主播放器和 mini 播放器的信息区歌曲展示。",
-    sections: [
-      {
-        id: "display",
-        title: "显示",
-        fields: [
-          {
-            key: "enabled",
-            type: "switch",
-            label: "启用歌词滚动",
-            default: DEFAULT_SETTINGS.enabled,
-          },
-          {
-            key: "showMainPlayerBar",
-            type: "switch",
-            label: "主播放器信息区",
-            default: DEFAULT_SETTINGS.showMainPlayerBar,
-          },
-          {
-            key: "showMiniPlayer",
-            type: "switch",
-            label: "mini 信息区",
-            default: DEFAULT_SETTINGS.showMiniPlayer,
-          },
-          {
-            key: "showSecondary",
-            type: "switch",
-            label: "显示翻译或音译",
-            default: DEFAULT_SETTINGS.showSecondary,
-          },
-          {
-            key: "showLoading",
-            type: "switch",
-            label: "显示加载状态",
-            default: DEFAULT_SETTINGS.showLoading,
-          },
-          {
-            key: "emptyText",
-            type: "text",
-            label: "空歌词文案",
-            default: DEFAULT_SETTINGS.emptyText,
-          },
-        ],
-      },
-      {
-        id: "motion",
-        title: "动效",
-        fields: [
-          {
-            key: "scrollSpeed",
-            type: "slider",
-            label: "滚动速度",
-            default: DEFAULT_SETTINGS.scrollSpeed,
-            min: 5,
-            max: 24,
-            step: 1,
-            unit: " 秒",
-          },
-          {
-            key: "opacity",
-            type: "slider",
-            label: "显示强度",
-            default: DEFAULT_SETTINGS.opacity,
-            min: 30,
-            max: 100,
-            step: 1,
-            unit: "%",
-          },
-        ],
-      },
-    ],
-    async onChange(values) {
-      await applySettings(ctx, values);
-    },
+    component: createSettingsComponent(ctx),
   });
 };
 
@@ -573,6 +726,199 @@ export async function activate(ctx) {
 
 .echo-lyric-info-strip.is-marquee .echo-lyric-info-text {
   animation: echo-lyric-info-marquee var(--echo-lyric-duration) linear infinite;
+}
+
+.echo-lyric-settings {
+  display: grid;
+  gap: 14px;
+  color: var(--color-text-main, var(--text-main, #f8fafc));
+}
+
+.echo-lyric-settings-preview,
+.echo-lyric-settings-section {
+  display: grid;
+  gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-text-main, #f8fafc) 12%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-elevated-base, #111827) 72%, transparent);
+  padding: 14px;
+}
+
+.echo-lyric-settings-preview {
+  gap: 10px;
+}
+
+.echo-lyric-settings-heading,
+.echo-lyric-settings-section-heading,
+.echo-lyric-settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.echo-lyric-settings-heading h3,
+.echo-lyric-settings-section-heading h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.echo-lyric-settings-section-heading {
+  align-items: flex-start;
+}
+
+.echo-lyric-settings-section-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.echo-lyric-settings-section-copy small,
+.echo-lyric-settings-copy small,
+.echo-lyric-settings-hint {
+  color: var(--color-text-secondary, var(--text-secondary, rgba(148, 163, 184, 0.9)));
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.echo-lyric-settings-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  border-radius: 999px;
+  padding: 0 8px;
+  background: color-mix(in srgb, var(--color-text-main, #f8fafc) 8%, transparent);
+  color: var(--color-text-secondary, var(--text-secondary, rgba(148, 163, 184, 0.9)));
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.echo-lyric-settings-pill.is-active {
+  background: color-mix(in srgb, var(--color-primary, #31cfa1) 16%, transparent);
+  color: var(--color-primary, #31cfa1);
+}
+
+.echo-lyric-preview-strip {
+  --echo-lyric-preview-opacity: 0.78;
+  --echo-lyric-preview-duration: 10s;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-primary, #31cfa1) 22%, transparent);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--color-primary, #31cfa1) 12%, transparent), transparent),
+    color-mix(in srgb, var(--color-text-main, #f8fafc) 6%, transparent);
+  padding: 9px 12px;
+  opacity: var(--echo-lyric-preview-opacity);
+  white-space: nowrap;
+}
+
+.echo-lyric-preview-strip.is-disabled {
+  border-color: color-mix(in srgb, var(--color-text-main, #f8fafc) 10%, transparent);
+  opacity: 0.55;
+}
+
+.echo-lyric-preview-strip span {
+  display: inline-block;
+  color: color-mix(in srgb, var(--color-primary, #31cfa1) 84%, var(--color-text-main, #f8fafc));
+  font-size: 13px;
+  font-weight: 720;
+  letter-spacing: 0;
+  animation: echo-lyric-settings-preview var(--echo-lyric-preview-duration) linear infinite;
+}
+
+.echo-lyric-preview-strip.is-disabled span {
+  animation: none;
+  color: var(--color-text-secondary, var(--text-secondary, rgba(148, 163, 184, 0.9)));
+}
+
+.echo-lyric-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.echo-lyric-settings-row.is-primary {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-text-main, #f8fafc) 10%, transparent);
+  padding-bottom: 10px;
+}
+
+.echo-lyric-settings-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.echo-lyric-settings-copy span,
+.echo-lyric-settings-label {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.echo-lyric-settings-targets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.echo-lyric-settings-targets .echo-lyric-settings-row {
+  border: 1px solid color-mix(in srgb, var(--color-text-main, #f8fafc) 10%, transparent);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.echo-lyric-settings-field {
+  display: grid;
+  gap: 8px;
+}
+
+.echo-lyric-settings-input input {
+  height: 36px;
+  border-radius: 8px;
+  padding-left: 12px;
+  padding-right: 32px;
+  font-size: 13px;
+}
+
+.echo-lyric-settings-slider {
+  width: 100%;
+  min-width: 0;
+}
+
+.echo-lyric-settings-footer {
+  justify-content: flex-start;
+  padding-top: 2px;
+}
+
+.echo-lyric-settings-message {
+  color: var(--color-text-secondary, var(--text-secondary, rgba(148, 163, 184, 0.9)));
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .echo-lyric-settings-preview,
+  .echo-lyric-settings-section {
+    padding: 12px;
+  }
+
+  .echo-lyric-settings-targets {
+    grid-template-columns: 1fr;
+  }
+
+  .echo-lyric-settings-row {
+    align-items: flex-start;
+  }
+}
+
+@keyframes echo-lyric-settings-preview {
+  0%,
+  20% {
+    transform: translateX(0);
+  }
+  80%,
+  100% {
+    transform: translateX(-18%);
+  }
 }
 
 @keyframes echo-lyric-info-marquee {
