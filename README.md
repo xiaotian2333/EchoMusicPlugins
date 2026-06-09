@@ -131,6 +131,8 @@ pnpm exec electron . --safe-mode
     "desktopLyric": false
   },
   "capabilities": {
+    "audioSource": false,
+    "lyrics": false,
     "process": false
   },
   "requires": {
@@ -145,6 +147,10 @@ pnpm exec electron . --safe-mode
 `runtime.miniPlayer` 可选。设为 `true` 后，EchoMusic 会在 mini 播放器窗口中单独加载该插件。mini 是独立窗口，只需要影响主窗口的插件不应开启该项；如果插件同时影响主窗口和 mini 窗口，需要把两边看成两个独立运行时，它们不共享 JS 内存。
 
 `runtime.desktopLyric` 可选。设为 `true` 后，EchoMusic 会在桌面歌词窗口中单独加载该插件。桌面歌词同样是独立窗口，只需要影响主窗口或 mini 窗口的插件不应开启该项。
+
+`capabilities.audioSource` 可选。插件如需通过 `ctx.player.audioSource.register()` 接管特定歌曲的播放 URL 解析，必须显式设为 `true`。适合 WebDAV、本地媒体库、私有网盘或其他自定义来源的歌曲。
+
+`capabilities.lyrics` 可选。插件如需通过 `ctx.lyrics.registerResolver()` 为特定歌曲提供歌词内容，必须显式设为 `true`。适合 WebDAV 旁挂 `.lrc`、本地媒体库内嵌歌词或私有歌词服务。
 
 `capabilities.process` 可选。插件如需通过 `ctx.process.launch()` 启动插件目录内的本地辅助程序，必须显式设为 `true`。未声明时主程序会拒绝启动进程。该能力只表示插件可以请求启动自己目录内的可执行文件，不表示启动后的程序运行在沙箱内。
 
@@ -258,8 +264,10 @@ export default {
 | `ctx.app` / `ctx.router` / `ctx.pinia`                                | 主应用实例、路由和 Pinia 实例                                                                                                                                                                                             |
 | `ctx.stores.player` / `.playlist` / `.lyric` / `.settings` / `.theme` | 应用核心 store                                                                                                                                                                                                            |
 | `ctx.player`                                                          | 播放控制便捷 API：`currentTrack`（computed）、`isPlaying`（computed）、`toggle()`、`next()`、`prev()`、`seek(time)`、`setVolume(vol)`、`setPlayMode(mode)`                                                                |
+| `ctx.player.audioSource.register(options)`                            | 注册自定义音源解析器，要求 manifest 声明 `capabilities.audioSource: true`                                                                                                                                                 |
 | `ctx.playlist`                                                        | 播放队列便捷 API                                                                                                                                                                                                          |
 | `ctx.lyric` / `ctx.settings`                                          | 歌词 store 与设置 store 的快捷引用，等价于 `ctx.stores.lyric` / `ctx.stores.settings`                                                                                                                                     |
+| `ctx.lyrics.registerResolver(options)`                                | 注册自定义歌词解析器，要求 manifest 声明 `capabilities.lyrics: true`                                                                                                                                                      |
 | `ctx.storage`                                                         | 插件私有 KV 存储，按插件 id 自动隔离                                                                                                                                                                                      |
 | `ctx.dialog.selectDirectory(options?)`                                | 打开系统文件夹选择对话框，返回 `{ canceled, paths }`                                                                                                                                                                      |
 | `ctx.dialog.selectFiles(options?)`                                    | 打开系统文件选择对话框，支持 `multiple` 和 `filters`                                                                                                                                                                      |
@@ -369,6 +377,109 @@ ctx.vue.watch(ctx.player.currentTrack, (track) => {
   console.log("曲目变化:", track?.title);
 });
 ```
+
+### 自定义音源解析
+
+插件可以注册音源解析器，在 EchoMusic 内置酷狗/云盘解析前优先处理特定歌曲。典型场景是 WebDAV 或私有媒体库：歌曲对象已经带有自己的播放地址，不应再走酷狗 `hash` 解析。
+
+使用前在 manifest 中声明：
+
+```json
+{
+  "capabilities": {
+    "audioSource": true
+  }
+}
+```
+
+注册示例：
+
+```js
+export function activate(ctx) {
+  ctx.player.audioSource.register({
+    id: "webdav",
+    order: 100,
+    match({ track }) {
+      return track.source === "webdav" && Boolean(track.audioUrl);
+    },
+    resolve({ track }) {
+      return {
+        url: track.audioUrl,
+        quality: "flac",
+        effect: "none",
+        timeLength: (track.duration || 0) * 1000,
+      };
+    },
+  });
+}
+```
+
+`resolve` 可以返回字符串 URL，也可以返回对象：
+
+```ts
+{
+  url: string;
+  quality?: "128" | "320" | "flac" | "high" | "super";
+  effect?: "none";
+  loudness?: { lufs: number; gain: number; peak: number };
+  timeLength?: number; // 毫秒
+}
+```
+
+`match` 和 `resolve` 都可以是异步函数。多个插件同时注册时，`order` 越小越先执行；第一个返回有效 `url` 的 resolver 会接管本次播放。返回 `null`、`undefined`、`false` 或空 URL 时，EchoMusic 会继续尝试下一个插件 resolver，最后回到内置解析流程。
+
+为了让没有酷狗 `hash` 的自定义歌曲可以进入播放流程，插件导入的歌曲至少应提供 `audioUrl`，并设置可识别的 `source`，例如 `source: "webdav"`。如果播放地址需要临时签名，也可以在 `resolve` 中按需刷新 URL 后返回。
+
+### 自定义歌词解析
+
+插件可以注册歌词解析器，在 EchoMusic 内置酷狗歌词搜索前优先处理特定歌曲。典型场景是 WebDAV 歌曲旁边有同名 `.lrc` 文件，或私有媒体库能直接返回歌词内容。
+
+使用前在 manifest 中声明：
+
+```json
+{
+  "capabilities": {
+    "lyrics": true
+  }
+}
+```
+
+注册示例：
+
+```js
+export function activate(ctx) {
+  ctx.lyrics.registerResolver({
+    id: "webdav-lrc",
+    order: 100,
+    match({ track }) {
+      return track?.source === "webdav";
+    },
+    async resolve({ track }) {
+      const lrc = await loadWebDavSidecarLrc(track);
+      if (!lrc) return null;
+      return {
+        source: "WebDAV",
+        lyric: lrc,
+      };
+    },
+  });
+}
+```
+
+`resolve` 可以返回 LRC/KRC/YRC 字符串，也可以返回对象：
+
+```ts
+{
+  lyric?: string;
+  decodeContent?: string;
+  content?: string;
+  source?: string;
+}
+```
+
+`match` 和 `resolve` 都可以是异步函数。多个插件同时注册时，`order` 越小越先执行；第一个返回有效歌词文本的 resolver 会接管本次歌词加载。返回 `null`、`undefined`、`false` 或空文本时，EchoMusic 会继续尝试下一个插件 resolver，最后回到内置酷狗歌词搜索。
+
+如果用户已经在歌词来源面板为当前歌曲手动选择过歌词，EchoMusic 会优先保留用户手动选择，不再用插件 resolver 覆盖。
 
 ### 使用宿主图标
 
