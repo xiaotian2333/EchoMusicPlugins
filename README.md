@@ -130,6 +130,9 @@ pnpm exec electron . --safe-mode
     "miniPlayer": false,
     "desktopLyric": false
   },
+  "capabilities": {
+    "process": false
+  },
   "requires": {
     "echoMusicVersion": ">=2.2.6-beta.9"
   }
@@ -142,6 +145,8 @@ pnpm exec electron . --safe-mode
 `runtime.miniPlayer` 可选。设为 `true` 后，EchoMusic 会在 mini 播放器窗口中单独加载该插件。mini 是独立窗口，只需要影响主窗口的插件不应开启该项；如果插件同时影响主窗口和 mini 窗口，需要把两边看成两个独立运行时，它们不共享 JS 内存。
 
 `runtime.desktopLyric` 可选。设为 `true` 后，EchoMusic 会在桌面歌词窗口中单独加载该插件。桌面歌词同样是独立窗口，只需要影响主窗口或 mini 窗口的插件不应开启该项。
+
+`capabilities.process` 可选。插件如需通过 `ctx.process.launch()` 启动插件目录内的本地辅助程序，必须显式设为 `true`。未声明时主程序会拒绝启动进程。该能力只表示插件可以请求启动自己目录内的可执行文件，不表示启动后的程序运行在沙箱内。
 
 `requires.echoMusicVersion` 可选，表示插件要求的 EchoMusic 主程序版本范围，使用 semver range。常见写法是 `>=2.2.6`；如果插件明确不支持下一个大版本，也可以写 `>=2.2.6 <3`。如果只写 `2.2.6`，EchoMusic 会按 `>=2.2.6` 处理。版本范围写错会被标记为 manifest 无效；范围有效但当前主程序不满足时，插件管理页会提示“版本不兼容”并阻止启用。
 
@@ -260,6 +265,8 @@ export default {
 | `ctx.dialog.selectFiles(options?)`                                    | 打开系统文件选择对话框，支持 `multiple` 和 `filters`                                                                                                                                                                      |
 | `ctx.fs.listImageFiles(directory, options?)`                          | 枚举指定文件夹内图片，返回文件路径、`file://` URL、大小和修改时间                                                                                                                                                         |
 | `ctx.fs.getFileUrl(filePath)`                                         | 将用户选择的本地文件路径转换为可渲染的 `file://` URL                                                                                                                                                                      |
+| `ctx.process.launch(options)`                                         | 启动插件目录内的本地辅助程序，要求 manifest 声明 `capabilities.process: true`                                                                                                                                             |
+| `ctx.process.terminate(pid)`                                          | 终止当前插件通过 `ctx.process.launch()` 启动的进程                                                                                                                                                                        |
 | `ctx.theme.surface.set(options)`                                      | 请求宿主调整主界面表面透明度和模糊效果，适合背景图、沉浸皮肤等插件                                                                                                                                                        |
 | `ctx.theme.surface.clear()`                                           | 清理当前插件提交的表面效果                                                                                                                                                                                                |
 | `ctx.nowPlaying`                                                      | 当前播放/歌词/外观快照 API，可读取快照、订阅变化、发送播放与歌词命令                                                                                                                                                      |
@@ -289,6 +296,56 @@ const isMac = ctx.electron.platform === "darwin";
 const isWindows = ctx.electron.platform === "win32";
 const isLinux = ctx.electron.platform === "linux";
 ```
+
+### 本地辅助进程
+
+插件可以用 `ctx.process.launch(options)` 启动随插件一起分发的本地辅助程序。使用前必须在 `manifest.json` 中声明：
+
+```json
+{
+  "capabilities": {
+    "process": true
+  }
+}
+```
+
+启动规则：
+
+- `executable` 必须是插件目录内的相对路径。EchoMusic 会解析真实路径，阻止通过 `..` 或符号链接跳出插件目录。
+- 启动使用 Node.js `spawn` 且 `shell: false`，不接受 shell 命令字符串；参数只能通过 `args: string[]` 传入。
+- `cwd` 可选，默认是插件目录；如果传入，也必须位于插件目录内。
+- Windows 只支持 `.exe` / `.com`；macOS 和 Linux 要求目标文件具有执行权限。
+- 首次启动每个插件的每个可执行文件前，EchoMusic 会提示用户确认风险。授权按插件 id、插件版本、可执行文件相对路径和 SHA-256 记录；插件升级、路径变化或文件内容变化后会重新确认。
+- 插件禁用、安全模式、卸载、更新或应用退出时，EchoMusic 会尝试终止该插件启动的进程。
+
+```js
+let helperPid = 0;
+
+export async function activate(ctx) {
+  const result = await ctx.process.launch({
+    executable:
+      ctx.electron.platform === "win32" ? "bin/helper.exe" : "bin/helper",
+    args: ["--plugin-id", ctx.id],
+    cwd: "bin",
+    env: {
+      ECHO_HELPER_MODE: "plugin",
+    },
+  });
+
+  if (!result.ok) {
+    if (!result.canceled) ctx.toast.warning(result.error);
+    return;
+  }
+
+  helperPid = result.pid;
+}
+
+export async function deactivate(ctx) {
+  if (helperPid) await ctx.process.terminate(helperPid);
+}
+```
+
+该能力只是限制“从哪里启动”和“由谁确认”。启动后的程序拥有当前系统用户权限，可能访问本地文件、网络和系统资源；请只在确实需要原生能力且用户能够理解风险时使用。
 
 ### 响应式访问播放状态
 

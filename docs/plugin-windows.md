@@ -64,7 +64,7 @@ export function deactivate(ctx) {
 
 ## 窗口入口
 
-窗口脚本可以导出 `activateWindow(ctx)`、`activate(ctx)` 或默认函数。入口上下文独立于主插件上下文，只提供窗口渲染所需的 Vue、容器、私有存储、CSS 注入、Now Playing 和当前窗口控制 API。
+窗口脚本可以导出 `activateWindow(ctx)`、`activate(ctx)` 或默认函数。入口上下文独立于主插件上下文，只提供窗口渲染所需的 Vue、容器、私有存储、CSS 注入、Now Playing、受控本地进程和当前窗口控制 API。
 
 ```js
 export function activateWindow(ctx) {
@@ -179,3 +179,5 @@ ctx.nowPlaying.command("lyricOffsetReset");
 - `move(windowId, bounds)`
 - `getBounds(windowId)`
 - `setIgnoreMouseEvents(windowId, ignore)`
+
+窗口入口中的 `ctx.process` 与主插件入口一致，也只会绑定当前插件 id。使用前仍需在 manifest 中声明 `capabilities.process: true`，详见主 README 的“本地辅助进程”章节。
