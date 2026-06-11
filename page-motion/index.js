@@ -100,9 +100,13 @@ const SETTINGS_CSS = `
 
 .echo-page-motion-field {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 220px);
   align-items: center;
   gap: 14px;
+}
+
+.echo-page-motion-field.is-switch {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .echo-page-motion-copy {
@@ -123,30 +127,10 @@ const SETTINGS_CSS = `
   line-height: 1.5;
 }
 
-.echo-page-motion-select,
-.echo-page-motion-number {
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--control-border);
-  border-radius: 10px;
-  background: var(--color-bg-card);
-  color: var(--color-text-main);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.echo-page-motion-select {
-  width: 150px;
-}
-
-.echo-page-motion-number {
-  width: 92px;
-}
-
-.echo-page-motion-check {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--color-primary);
+.echo-page-motion-host-select,
+.echo-page-motion-host-slider {
+  width: 100%;
+  justify-self: end;
 }
 
 .echo-page-motion-actions {
@@ -154,15 +138,20 @@ const SETTINGS_CSS = `
   justify-content: flex-end;
 }
 
-.echo-page-motion-reset {
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--control-border);
-  border-radius: 10px;
-  background: var(--control-muted-bg);
-  color: var(--color-text-main);
-  font-size: 12px;
-  font-weight: 800;
+@media (max-width: 640px) {
+  .echo-page-motion-field,
+  .echo-page-motion-field.is-switch {
+    grid-template-columns: 1fr;
+  }
+
+  .echo-page-motion-host-select,
+  .echo-page-motion-host-slider {
+    justify-self: stretch;
+  }
+
+  .echo-page-motion-actions {
+    justify-content: flex-start;
+  }
 }
 `;
 
@@ -240,58 +229,59 @@ const updateSettings = (patch) => {
 };
 
 const createSettingsComponent = (ctx) => {
-  const { defineComponent, h } = ctx.vue;
+  const { defineComponent } = ctx.vue;
 
   return defineComponent({
+    name: "PageMotionSettings",
     setup() {
-      const checkbox = (key) =>
-        h("input", {
-          class: "echo-page-motion-check",
-          type: "checkbox",
-          checked: state.settings[key],
-          onChange: (event) => {
-            updateSettings({ [key]: Boolean(event.target.checked) });
+      const { h, defineAsyncComponent } = ctx.vue;
+      const Button = defineAsyncComponent(ctx.ui.components.Button);
+      const Select = defineAsyncComponent(ctx.ui.components.Select);
+      const Slider = defineAsyncComponent(ctx.ui.components.Slider);
+      const Switch = defineAsyncComponent(ctx.ui.components.Switch);
+      const presetOptions = Object.entries(TRANSITION_PRESETS).map(([value, preset]) => ({
+        label: preset.label,
+        value,
+      }));
+
+      const switchControl = (key) =>
+        h(Switch, {
+          modelValue: Boolean(state.settings[key]),
+          "onUpdate:modelValue": (value) => {
+            updateSettings({ [key]: Boolean(value) });
           },
         });
 
       const presetSelect = () =>
-        h(
-          "select",
-          {
-            class: "echo-page-motion-select",
-            value: state.settings.preset,
-            onChange: (event) => {
-              const preset = String(event.target.value || DEFAULT_SETTINGS.preset);
-              updateSettings({
-                preset,
-                durationMs:
-                  TRANSITION_PRESETS[preset]?.durationMs || state.settings.durationMs,
-              });
-            },
+        h(Select, {
+          class: "echo-page-motion-host-select",
+          modelValue: state.settings.preset,
+          options: presetOptions,
+          "onUpdate:modelValue": (value) => {
+            const preset = String(value || DEFAULT_SETTINGS.preset);
+            updateSettings({
+              preset,
+              durationMs: TRANSITION_PRESETS[preset]?.durationMs || state.settings.durationMs,
+            });
           },
-          Object.entries(TRANSITION_PRESETS).map(([value, preset]) =>
-            h("option", { value }, preset.label),
-          ),
-        );
+        });
 
-      const durationInput = () =>
-        h("div", { style: "display: flex; align-items: center; gap: 8px;" }, [
-          h("input", {
-            class: "echo-page-motion-number",
-            type: "number",
-            min: 80,
-            max: 900,
-            step: 10,
-            value: state.settings.durationMs,
-            onChange: (event) => {
-              updateSettings({ durationMs: Number(event.target.value) });
-            },
-          }),
-          h("span", { class: "echo-page-motion-description" }, "ms"),
-        ]);
+      const durationSlider = () =>
+        h(Slider, {
+          class: "echo-page-motion-host-slider",
+          modelValue: state.settings.durationMs,
+          min: 80,
+          max: 900,
+          step: 10,
+          showValue: true,
+          valueSuffix: "ms",
+          "onUpdate:modelValue": (value) => {
+            updateSettings({ durationMs: Number(value) });
+          },
+        });
 
-      const field = (label, description, control) =>
-        h("label", { class: "echo-page-motion-field" }, [
+      const field = (label, description, control, options = {}) =>
+        h("div", { class: ["echo-page-motion-field", options.switch ? "is-switch" : ""] }, [
           h("span", { class: "echo-page-motion-copy" }, [
             h("span", { class: "echo-page-motion-label" }, label),
             description
@@ -311,20 +301,31 @@ const createSettingsComponent = (ctx) => {
         return h("div", { class: "echo-page-motion-settings" }, [
           h("section", { class: "echo-page-motion-section" }, [
             h("div", { class: "echo-page-motion-title" }, "页面动效"),
-            field("启用页面切换", "关闭后页面切换不再播放入场动画。", checkbox("enabled")),
-            field("首次进入也播放", "应用启动或进入主界面时同样播放动效。", checkbox("appear")),
+            field(
+              "启用页面切换",
+              "关闭后页面切换不再播放入场动画。",
+              switchControl("enabled"),
+              { switch: true },
+            ),
+            field(
+              "首次进入也播放",
+              "应用启动或进入主界面时同样播放动效。",
+              switchControl("appear"),
+              { switch: true },
+            ),
             field("动效预设", preset.description, presetSelect()),
-            field("时长", "控制页面切换速度。", durationInput()),
+            field("时长", "控制页面切换速度。", durationSlider()),
           ]),
           h("div", { class: "echo-page-motion-actions" }, [
             h(
-              "button",
+              Button,
               {
-                class: "echo-page-motion-reset",
                 type: "button",
+                variant: "ghost",
+                size: "xs",
                 onClick: reset,
               },
-              "恢复默认",
+              { default: () => "恢复默认" },
             ),
           ]),
         ]);
