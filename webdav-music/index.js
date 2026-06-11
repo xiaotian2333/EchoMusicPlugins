@@ -1465,97 +1465,102 @@ const createBrowserPage = (ctx, state) => {
         const songCount = entries.value.filter((e) => !e.isCollection).length;
 
         return h("div", { class: "webdav-page" }, [
-          // === SliverHeader 风格头部 ===
-          h("div", { class: "flex items-start gap-5 px-6 pt-6 pb-2 flex-shrink-0", style: "background: var(--color-bg-main);" }, [
-            // 左侧大图标
-            h("div", { class: "w-[150px] h-[150px] rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden", style: "background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 70%, #000)); box-shadow: 0 8px 24px rgba(0,0,0,0.2);" }, [
-              h(Icon, { icon: "tabler:server", width: 48, height: 48, style: "color: white;" }),
+          // === SliverHeader 风格头部（展开状态） ===
+          h("div", { class: "flex items-start gap-5 px-6 flex-shrink-0", style: "background: var(--color-bg-main); padding-top: 10px;" }, [
+            // 左侧大图标 (150x150)
+            h("div", { class: "w-[150px] h-[150px] rounded-[16px] flex items-center justify-center flex-shrink-0 overflow-hidden", style: "background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 70%, #000));" }, [
+              h(Icon, { icon: "tabler:server", width: 150, height: 150, style: "color: white; stroke: white;" }),
             ]),
-            // 右侧信息
-            h("div", { class: "flex-1 min-w-0 flex flex-col justify-between min-h-[150px]" }, [
-              h("div", { class: "flex items-center justify-between gap-3" }, [
-                h("h1", { class: "text-[24px] font-bold m-0 leading-tight", style: "color: var(--color-text-main);" }, "WebDAV"),
-                h("div", { class: "px-2 py-0.5 rounded-full text-[10px] font-bold tracking-[1.2px] uppercase shrink-0", style: "background: color-mix(in srgb, var(--color-primary) 8%, transparent); color: var(--color-primary); border: 0.5px solid color-mix(in srgb, var(--color-primary) 20%, transparent);" }, "WEBDAV"),
+            // 右侧信息列
+            h("div", { class: "flex-1 min-w-0 flex flex-col" }, [
+              // 标题行（顶部，shrink-0）
+              h("div", { class: "flex items-center justify-between gap-3 shrink-0" }, [
+                h("h1", { class: "flex-1 min-w-0 text-[24px] font-bold text-text-main leading-tight truncate m-0" }, "WebDAV"),
+                h("div", { class: "shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-[1.2px] uppercase", style: "background: color-mix(in srgb, var(--color-primary) 8%, transparent); color: var(--color-primary); border: 0.5px solid color-mix(in srgb, var(--color-primary) 20%, transparent);" }, "WEBDAV"),
               ]),
-              h("p", { class: "text-[13px] font-semibold m-0", style: "color: var(--color-text-secondary);" }, "连接WebDAV 服务器，浏览和播放云端音乐文件"),
-              h("div", { class: "text-[12px] font-semibold", style: "color: var(--color-text-secondary); opacity: 0.7;" }, `${songCount} 首歌曲`),
-              h("div", { class: "flex gap-2 mt-auto" }, [
-                h("button", {
-                  class: "inline-flex items-center gap-2 px-3 h-9 rounded-lg text-[12px] font-semibold transition-all active:scale-95 select-none bg-primary text-white border-none cursor-pointer",
-                  onClick: playAll,
-                }, [
-                  h(Icon, { icon: ctx.icons.iconPlay, width: 16, height: 16 }),
-                  " 播放",
+              // 详情区域（垂直居中，flex-1）
+              h("div", { class: "flex-1 min-h-0 flex flex-col justify-center", style: "padding-top: 8px; padding-bottom: 8px;" }, [
+                h("div", { class: "flex flex-col gap-2" }, [
+                  h("div", { class: "text-[13px] font-semibold text-text-secondary" }, "连接WebDAV 服务器，浏览和播放云端音乐文件"),
+                  h("div", { class: "inline-flex items-center gap-1.5 text-[11px] font-semibold", style: "color: var(--color-text-secondary); opacity: 0.8;" }, [
+                    h(Icon, { icon: "tabler:server", width: 12, height: 12 }),
+                    h("span", {}, `${songCount} 首歌曲`),
+                  ]),
                 ]),
-                h("button", {
-                  class: "inline-flex items-center gap-2 px-3 h-9 rounded-lg text-[12px] font-semibold transition-all active:scale-95 select-none border-none cursor-pointer",
-                  style: { background: "var(--bg-info-card)", color: "var(--color-text-main)" },
-                  onClick: () => ctx.toast.info("批量操作功能开发中"),
-                }, [
-                  h(Icon, { icon: ctx.icons.iconList, width: 16, height: 16 }),
-                  " 批量",
+              ]),
+              // 操作按钮行（贴底，shrink-0）
+              h("div", { class: "shrink-0" }, [
+                h("div", { class: "flex flex-wrap gap-2" }, [
+                  h("button", {
+                    class: "inline-flex items-center gap-2 px-3 h-9 rounded-lg text-[12px] font-semibold transition-all active:scale-95 select-none bg-primary text-white border-none cursor-pointer",
+                    onClick: playAll,
+                  }, [
+                    h(Icon, { icon: ctx.icons.iconPlay, width: 16, height: 16 }),
+                    h("span", {}, "播放"),
+                  ]),
+                  h("button", {
+                    class: "inline-flex items-center gap-2 px-3 h-9 rounded-lg text-[12px] font-semibold transition-all active:scale-95 select-none border-none cursor-pointer",
+                    style: { background: "var(--bg-info-card)", color: "var(--color-text-main)" },
+                    onClick: () => ctx.toast.info("批量操作功能开发中"),
+                  }, [
+                    h(Icon, { icon: ctx.icons.iconList, width: 16, height: 16 }),
+                    h("span", {}, "批量"),
+                  ]),
                 ]),
               ]),
             ]),
           ]),
 
           // === 库标签栏（仿主应用 Tabs 吸顶效果） ===
-          h("div", { class: "sticky z-110 pt-2", style: "background: var(--color-bg-main);" }, [
+          h("div", { class: "sticky z-110", style: "background: var(--color-bg-main);" }, [
             h("div", { class: "px-6", style: "border-bottom: 1px solid var(--border-subtle);" }, [
               h("div", { class: "flex items-center justify-between h-14" }, [
-                h("div", { class: "flex items-center gap-8 overflow-x-auto pt-[10px]", style: "scrollbar-width: none;" },
+                h("div", { class: "flex items-center gap-8" },
                   state.settings.libraries.map((library) => {
                     const isActive = library.id === activeLibraryId.value;
                     const displayName = library.name || "未命名库";
                     const count = librarySongCounts.value[library.id] || 0;
                     return h("button", {
-                      class: "relative inline-flex items-center h-full pb-1 text-[14px] font-semibold bg-none border-none cursor-pointer whitespace-nowrap select-none",
+                      class: "relative h-full flex items-end pb-1 text-[15px] font-bold text-text-main bg-none border-none cursor-pointer whitespace-nowrap select-none",
                       style: {
-                        color: "var(--color-text-main)",
                         opacity: isActive ? "1" : "0.6",
                         transition: "opacity 0.2s",
                       },
                       onClick: () => switchLibrary(library.id),
                     }, [
-                      h("span", { class: "relative inline-flex items-center" }, [
-                        h("span", { class: "text-[14px] font-semibold" }, displayName),
+                      h("span", { class: "relative" }, [
+                        h("span", {}, displayName),
                         count >= 0
                           ? h("span", {
-                              class: "absolute -top-1.5 -right-5 inline-flex min-w-[16px] h-[16px] items-center justify-center px-1 rounded-full text-[9px] font-bold tabular-nums shadow-sm select-none pointer-events-none",
-                              style: { background: "var(--color-text-main)", color: "var(--color-bg-main)" },
+                              class: "absolute -top-1.5 -right-5 inline-flex min-w-[16px] h-4 items-center justify-center px-1 rounded-full text-[9px] font-bold tabular-nums shadow-sm select-none pointer-events-none",
+                              style: { background: "light-dark(#000, #fff)", color: "light-dark(#fff, #000)" },
                             }, count)
                           : null,
                       ]),
-                      h("span", {
-                        class: "absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full transition-all duration-300",
-                        style: {
-                          width: isActive ? "24px" : "0",
-                          height: "2px",
-                          background: "var(--color-primary)",
-                        },
+                      h("div", {
+                        class: ["absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 bg-primary rounded-full transition-all duration-300", isActive ? "w-6" : "w-0"],
                       }),
                     ]);
                   }),
                 ),
                 h("div", { class: "flex items-center gap-2 flex-shrink-0" }, [
-                  // 搜索框
-                  h("div", { class: "relative flex items-center" }, [
-                    h(Icon, { icon: ctx.icons.iconSearch, width: 14, height: 14, class: "absolute left-2", style: { color: "var(--color-text-main)", opacity: "0.6", pointerEvents: "none" } }),
+                  // 搜索框（仿主应用 song-search-input 样式）
+                  h("div", { class: "relative" }, [
+                    h(Icon, { icon: ctx.icons.iconSearch, width: 14, height: 14, class: "absolute left-2.5 top-1/2 -translate-y-1/2", style: { color: "var(--color-text-main)", opacity: "0.6", pointerEvents: "none" } }),
                     h("input", {
-                      class: "w-[208px] h-[36px] pl-8 pr-3 rounded-lg border text-[12px] outline-none",
-                      style: { borderColor: "var(--color-border-light)", background: "var(--color-bg-elevated)", color: "var(--color-text-main)" },
+                      class: "w-52 h-9 pl-8 pr-3 rounded-lg text-text-main placeholder:text-text-main/50 outline-none text-[12px] transition-all",
+                      style: { background: "var(--color-bg-elevated)" },
                       type: "text",
-                      placeholder: "搜索...",
+                      placeholder: "搜索歌曲...",
                       value: searchQuery.value,
                       onInput: (e) => { searchQuery.value = e.target.value; },
                     }),
                   ]),
-                  // 定位按钮
+                  // 定位按钮（仿主应用 song-locate-btn 样式）
                   h(Button, {
                     variant: "unstyled",
                     size: "none",
-                    class: "p-2 rounded-lg",
-                    style: { color: "var(--color-text-main)", opacity: "0.6" },
+                    class: "song-locate-btn p-2 rounded-lg",
                     title: "定位当前播放",
                     onClick: () => ctx.toast.info("定位功能开发中"),
                   }, { default: () => h(Icon, { icon: ctx.icons.iconCurrentLocation, width: 18, height: 18 }) }),
