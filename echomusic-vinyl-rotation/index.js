@@ -81,14 +81,17 @@ function injectVinylStyles() {
       height: 360px !important;
       border-radius: 50% !important;
       z-index: 1 !important;
-      background: #141416 !important;
-      box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.6),
-        inset 0 0 100px rgba(0, 0, 0, 0.5);
+      background: #0d0d0f !important;
+      box-shadow:
+        0 2px 6px rgba(0,0,0,0.6),
+        0 10px 30px rgba(0,0,0,0.7),
+        0 25px 70px rgba(0,0,0,0.5),
+        inset 0 0 2px rgba(255,255,255,0.06) !important;
       top: 0 !important;
       left: 0 !important;
       animation: echoVinylSpin 20s linear infinite;
       animation-play-state: paused !important;
+      overflow: hidden !important;
     }
 
     .echo-vinyl-disc::before {
@@ -99,9 +102,16 @@ function injectVinylStyles() {
       right: 0 !important;
       bottom: 0 !important;
       border-radius: 50% !important;
-      background: 
-        radial-gradient(circle, rgba(45,45,48,1) 0%, rgba(30,30,33,1) 40%, rgba(18,18,20,1) 100%),
-        repeating-radial-gradient(circle at center, transparent 0px, rgba(70,70,73,0.12) 1px, transparent 2px, transparent 3px) !important;
+      background:
+        repeating-radial-gradient(
+          circle at center,
+          rgba(16,16,18,1) 0px,
+          rgba(32,32,35,1) 1.5px,
+          rgba(10,10,12,1) 3px,
+          rgba(14,14,16,1) 3.8px,
+          rgba(26,26,29,1) 5.3px,
+          rgba(8,8,10,1) 7px
+        ) !important;
     }
 
     .echo-vinyl-disc::after {
@@ -112,7 +122,22 @@ function injectVinylStyles() {
       right: 0 !important;
       bottom: 0 !important;
       border-radius: 50% !important;
-      background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 40%, transparent 60%, rgba(0,0,0,0.08) 100%) !important;
+      background:
+        linear-gradient(
+          140deg,
+          rgba(255,255,255,0.18) 0%,
+          rgba(255,255,255,0.10) 10%,
+          rgba(255,255,255,0.04) 20%,
+          transparent 35%,
+          transparent 50%,
+          rgba(0,0,0,0.08) 70%,
+          rgba(0,0,0,0.15) 100%
+        ),
+        radial-gradient(
+          ellipse at 35% 20%,
+          rgba(255,255,255,0.12) 0%,
+          transparent 35%
+        ) !important;
     }
 
     body.echo-vinyl-spinning .echo-vinyl-disc,
