@@ -35,6 +35,7 @@ const STYLE = `
 
 .echo-scroll-assistant-button:hover {
   color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 60%, var(--control-border));
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
   transform: translateY(-1px);
 }
@@ -54,6 +55,10 @@ const STYLE = `
 .dark .echo-scroll-assistant-button {
   border-color: rgba(255, 255, 255, 0.26);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+}
+
+.dark .echo-scroll-assistant-button:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 58%, rgba(255, 255, 255, 0.26));
 }
 
 .echo-scroll-assistant-fade-enter-active,
@@ -303,7 +308,7 @@ const createFloatingButton = (ctx) => {
       });
 
       const scrollToBottom = () => {
-        ctx.scroll.scrollToBottom(container.value, { behavior: "smooth" });
+        ctx.scroll.scrollToBottom(container.value, { behavior: "auto" });
       };
 
       onMounted(() => {
@@ -353,9 +358,7 @@ const createFloatingButton = (ctx) => {
                     [
                       h(Icon, {
                         class: "echo-scroll-assistant-button-icon",
-                        icon:
-                          ctx.icons.iconArrowBarToDown ||
-                          ctx.icons.iconSortDown,
+                        icon: ctx.icons.iconArrowDown,
                         width: 20,
                         height: 20,
                       }),
