@@ -29,8 +29,8 @@ const STYLE = `
     box-shadow 0.18s ease,
     transform 0.3s ease,
     opacity 0.3s ease,
-    right 0.28s ease,
-    bottom 0.28s ease;
+    right 0.16s cubic-bezier(0.2, 0, 0, 1),
+    bottom 0.16s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .echo-scroll-assistant-button:hover {
