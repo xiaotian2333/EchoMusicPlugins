@@ -186,11 +186,11 @@ const SETTINGS_CSS = `
 
 .echo-dynamic-island-preview-capsule.is-expanded {
   grid-template-columns: 34px minmax(0, 1fr) auto;
-  grid-template-rows: 48px auto;
-  align-items: center;
+  grid-template-rows: 48px minmax(0, 1fr);
+  align-items: stretch;
   min-height: 126px;
   border-radius: 26px;
-  row-gap: 10px;
+  row-gap: 8px;
   padding: 14px;
 }
 
@@ -208,8 +208,13 @@ const SETTINGS_CSS = `
 }
 
 .echo-dynamic-island-preview-capsule.is-expanded .echo-dynamic-island-preview-copy {
+  display: grid;
   grid-column: 1 / 4;
   grid-row: 2;
+  align-self: stretch;
+  align-content: center;
+  gap: 3px;
+  padding: 3px 0 5px;
 }
 
 .echo-dynamic-island-preview-copy strong,
