@@ -154,7 +154,7 @@
       "name": "自定义图标",
       "description": "允许用户自定义托盘图标、窗口标题栏图标、任务栏图标、桌面快捷方式图标以及启动画面。",
       "author": "Oneday5799",
-      "path": "",
+      "path": "custom-icon",
       "repo": "",
       "homepage": "https://github.com/oneday5799/EchoMusicPlugins/tree/main/custom-icon",
       "tags": [
