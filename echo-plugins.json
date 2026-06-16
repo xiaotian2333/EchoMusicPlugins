@@ -150,6 +150,21 @@
       ]
     },
     {
+      "id": "cover-color-lyric",
+      "name": "取色歌词",
+      "description": "桌面歌词颜色自动跟随歌曲封面主色调，算法与主程序 color.ts 完全一致；支持深浅色归一化、频谱律动、一键恢复默认设置",
+      "author": "小栀",
+      "path": "",
+      "repo": "https://github.com/rinnki-L/cover-color-lyric",
+      "homepage": "https://github.com/rinnki-L/cover-color-lyric",
+      "tags": [
+        "appearance",
+        "lyrics",
+        "lyric-effects",
+        "cover"
+      ]
+    },
+    {
       "id": "custom-icon",
       "name": "自定义图标",
       "description": "允许用户自定义托盘图标、窗口标题栏图标、任务栏图标、桌面快捷方式图标以及启动画面。",
