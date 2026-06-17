@@ -8,7 +8,7 @@ const ICON_TYPES = ["tray", "taskbar", "desktop"];
 const SHORTCUT_TYPES = new Set(["taskbar", "desktop"]);
 
 const DEFAULT_SETTINGS = (() => {
-  const base = { enabled: true, splashEnabled: true, splashImagePath: "", splashRelativePath: "", splashPreviewUrl: "", splashDuration: 3, splashScale: "cover", splashOverlayOpacity: 0.5, splashOverlayColor: "#ffffff", splashBlurAmount: 0, splashBgColor: "#ffffff", splashShowLogo: true, splashAudioEnabled: true, splashAudioPath: "", splashAudioRelativePath: "", splashAudioPreviewUrl: "", splashAudioVolume: 0.5, splashAudioDuration: 3 };
+  const base = { enabled: true, splashEnabled: true, splashImagePath: "", splashRelativePath: "", splashPreviewUrl: "", splashDuration: 3, splashScale: "cover", splashOverlayOpacity: 0.5, splashOverlayColor: "#ffffff", splashBlurAmount: 0, splashBgColor: "#ffffff", splashShowLogo: true, splashStatusText: "引擎就绪，正在开启音乐世界...", splashFooterText: "ECHOMUSIC·音为你而生", splashAudioEnabled: true, splashAudioPath: "", splashAudioRelativePath: "", splashAudioPreviewUrl: "", splashAudioVolume: 0.5, splashAudioDuration: 3 };
   for (const type of ICON_TYPES) {
     base[`${type}IconPath`] = "";
     base[`${type}RelativePath`] = "";
@@ -86,6 +86,8 @@ const buildSettingsFromDraft = (draft, overrides = {}) => ({
   splashBlurAmount: draft.splashBlurAmount,
   splashBgColor: draft.splashBgColor,
   splashShowLogo: draft.splashShowLogo,
+  splashStatusText: draft.splashStatusText,
+  splashFooterText: draft.splashFooterText,
   splashAudioEnabled: draft.splashAudioEnabled,
   splashAudioPath: draft.splashAudioPath,
   splashAudioRelativePath: draft.splashAudioRelativePath,
@@ -148,7 +150,7 @@ const getFileName = (p) => {
 
 const normalizeSettings = (stored) => {
   const src = (stored && typeof stored === "object") || Array.isArray(stored) ? stored : {};
-  const s = { enabled: src.enabled !== undefined ? Boolean(src.enabled) : true, splashEnabled: src.splashEnabled !== undefined ? Boolean(src.splashEnabled) : true, splashImagePath: typeof src.splashImagePath === "string" ? src.splashImagePath : "", splashRelativePath: typeof src.splashRelativePath === "string" ? src.splashRelativePath : "", splashPreviewUrl: typeof src.splashPreviewUrl === "string" ? src.splashPreviewUrl : "", splashDuration: typeof src.splashDuration === "number" && src.splashDuration > 0 ? src.splashDuration : 3, splashScale: ["cover", "contain", "fill"].includes(src.splashScale) ? src.splashScale : "cover", splashOverlayOpacity: typeof src.splashOverlayOpacity === "number" ? Math.max(0, Math.min(1, src.splashOverlayOpacity)) : 0.5, splashOverlayColor: typeof src.splashOverlayColor === "string" ? src.splashOverlayColor : "#ffffff", splashBlurAmount: typeof src.splashBlurAmount === "number" ? Math.max(0, Math.min(20, src.splashBlurAmount)) : 0, splashBgColor: typeof src.splashBgColor === "string" ? src.splashBgColor : "#ffffff", splashShowLogo: src.splashShowLogo !== undefined ? Boolean(src.splashShowLogo) : true, splashAudioEnabled: src.splashAudioEnabled !== undefined ? Boolean(src.splashAudioEnabled) : true, splashAudioPath: typeof src.splashAudioPath === "string" ? src.splashAudioPath : "", splashAudioRelativePath: typeof src.splashAudioRelativePath === "string" ? src.splashAudioRelativePath : "", splashAudioPreviewUrl: typeof src.splashAudioPreviewUrl === "string" ? src.splashAudioPreviewUrl : "", splashAudioVolume: typeof src.splashAudioVolume === "number" ? Math.max(0, Math.min(1, src.splashAudioVolume)) : 0.5, splashAudioDuration: typeof src.splashAudioDuration === "number" && src.splashAudioDuration > 0 ? src.splashAudioDuration : 3 };
+  const s = { enabled: src.enabled !== undefined ? Boolean(src.enabled) : true, splashEnabled: src.splashEnabled !== undefined ? Boolean(src.splashEnabled) : true, splashImagePath: typeof src.splashImagePath === "string" ? src.splashImagePath : "", splashRelativePath: typeof src.splashRelativePath === "string" ? src.splashRelativePath : "", splashPreviewUrl: typeof src.splashPreviewUrl === "string" ? src.splashPreviewUrl : "", splashDuration: typeof src.splashDuration === "number" && src.splashDuration > 0 ? src.splashDuration : 3, splashScale: ["cover", "contain", "fill"].includes(src.splashScale) ? src.splashScale : "cover", splashOverlayOpacity: typeof src.splashOverlayOpacity === "number" ? Math.max(0, Math.min(1, src.splashOverlayOpacity)) : 0.5, splashOverlayColor: typeof src.splashOverlayColor === "string" ? src.splashOverlayColor : "#ffffff", splashBlurAmount: typeof src.splashBlurAmount === "number" ? Math.max(0, Math.min(20, src.splashBlurAmount)) : 0, splashBgColor: typeof src.splashBgColor === "string" ? src.splashBgColor : "#ffffff", splashShowLogo: src.splashShowLogo !== undefined ? Boolean(src.splashShowLogo) : true, splashStatusText: typeof src.splashStatusText === "string" ? src.splashStatusText : "引擎就绪，正在开启音乐世界...", splashFooterText: typeof src.splashFooterText === "string" ? src.splashFooterText : "ECHOMUSIC·音为你而生", splashAudioEnabled: src.splashAudioEnabled !== undefined ? Boolean(src.splashAudioEnabled) : true, splashAudioPath: typeof src.splashAudioPath === "string" ? src.splashAudioPath : "", splashAudioRelativePath: typeof src.splashAudioRelativePath === "string" ? src.splashAudioRelativePath : "", splashAudioPreviewUrl: typeof src.splashAudioPreviewUrl === "string" ? src.splashAudioPreviewUrl : "", splashAudioVolume: typeof src.splashAudioVolume === "number" ? Math.max(0, Math.min(1, src.splashAudioVolume)) : 0.5, splashAudioDuration: typeof src.splashAudioDuration === "number" && src.splashAudioDuration > 0 ? src.splashAudioDuration : 3 };
   for (const type of ICON_TYPES) {
     s[`${type}IconPath`] = typeof src[`${type}IconPath`] === "string" ? src[`${type}IconPath`] : "";
     s[`${type}RelativePath`] = typeof src[`${type}RelativePath`] === "string" ? src[`${type}RelativePath`] : "";
@@ -192,10 +194,23 @@ const playSplashAudio = async (ctx, settings) => {
   if (!settings.splashAudioEnabled || !settings.splashAudioPath) return;
   try {
     const ext = getExt(settings.splashAudioPath);
-    const mime = getAudioMime(ext);
-    const result = await ctx.fs.readFileBytes(settings.splashAudioPath, { maxBytes: 10 * 1024 * 1024 });
-    if (!result?.ok) return;
-    const url = bufferToDataUrl(result.data, mime);
+    let url = "";
+    try {
+      const fileUrlResult = await ctx.fs.getFileUrl(settings.splashAudioPath);
+      if (fileUrlResult.ok && fileUrlResult.url) url = fileUrlResult.url;
+    } catch {}
+    if (!url && settings.splashAudioRelativePath) {
+      try {
+        const fileUrlResult = await ctx.fs.getFileUrl(settings.splashAudioRelativePath);
+        if (fileUrlResult.ok && fileUrlResult.url) url = fileUrlResult.url;
+      } catch {}
+    }
+    if (!url) {
+      const mime = getAudioMime(ext);
+      const result = await ctx.fs.readFileBytes(settings.splashAudioPath, { maxBytes: 10 * 1024 * 1024 });
+      if (!result?.ok) return;
+      url = bufferToDataUrl(result.data, mime);
+    }
     if (!url) return;
     splashAudio = new Audio(url);
     splashAudio.volume = settings.splashAudioVolume;
@@ -216,16 +231,25 @@ const cloneLogoToOverlay = (settings) => {
     clone.classList.add("splash-logo-clone");
     clone.style.cssText = "position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:1;";
     if (!settings.splashShowLogo) {
-      const logoDiv = clone.querySelector(":scope > div");
-      if (logoDiv) logoDiv.style.display = "none";
+      const mainChildren = clone.querySelectorAll(":scope > *");
+      mainChildren.forEach((child) => { child.style.display = "none"; });
+    } else {
+      if (settings.splashStatusText) {
+        const statusEl = clone.querySelector("p") || clone.querySelector("span");
+        if (statusEl) statusEl.textContent = settings.splashStatusText;
+      }
     }
     splashOverlay.appendChild(clone);
   }
   const footer = lv.querySelector("footer");
-  if (footer) {
+  if (footer && settings.splashShowLogo) {
     const clone = footer.cloneNode(true);
     clone.classList.add("splash-logo-clone");
     clone.style.cssText = "position:absolute;bottom:40px;left:0;right:0;pointer-events:none;z-index:1;";
+    if (settings.splashFooterText) {
+      const footerTextEl = clone.querySelector("span") || clone.querySelector("p");
+      if (footerTextEl) footerTextEl.textContent = settings.splashFooterText;
+    }
     splashOverlay.appendChild(clone);
   }
 };
@@ -497,7 +521,7 @@ const createSettingsComponent = (ctx) =>
         }
       };
 
-      const handleClearSplash = async () => { const p = draft.splashRelativePath || ""; setVal("splashImagePath", ""); setVal("splashRelativePath", ""); setVal("splashPreviewUrl", ""); if (p) await deleteFile(ctx, p); };
+      const handleClearSplash = async () => { const p = draft.splashRelativePath || ""; setVal("splashImagePath", ""); setVal("splashRelativePath", ""); setVal("splashPreviewUrl", ""); setVal("splashShowLogo", true); if (p) await deleteFile(ctx, p); };
 
       const updateShortcuts = createShortcutsUpdater(ctx);
 
@@ -601,6 +625,7 @@ const createSettingsComponent = (ctx) =>
           const p = draft.splashRelativePath || "";
           const s = buildSettingsFromDraft(draft, {
             splashImagePath: "", splashRelativePath: "", splashPreviewUrl: "",
+            splashShowLogo: true, splashStatusText: "引擎就绪，正在开启音乐世界...", splashFooterText: "ECHOMUSIC·音为你而生",
           });
           Object.assign(draft, s);
           await ctx.storage.set(SETTINGS_KEY, s);
@@ -738,6 +763,7 @@ const createSettingsComponent = (ctx) =>
         h("div", { class: "custom-icon-preview-box wide" }, [
           resolvedSplashUrl.value ? h("img", { src: resolvedSplashUrl.value, alt: "启动画面预览" }) : h("div", { class: "custom-icon-preview-empty", innerHTML: "选择图片后在此预览<br>支持 .png/.jpg/.webp/.gif/.bmp<br>启动画面中的部分功能来自群友@小栀（rinnki）" }),
         ]),
+        h("small", { style: "color:var(--color-text-secondary,rgba(148,163,184,0.9));font-size:11px;line-height:1.5;margin-top:4px;display:block" }, "图片大小限制 4MB，超过可能导致显示不全"),
         renderStatus(),
       ]);
 
@@ -784,9 +810,17 @@ const createSettingsComponent = (ctx) =>
               ]),
           h("div", { class: "custom-icon-field" }, [
             h("div", { class: "custom-icon-switch-row" }, [
-              h("div", { class: "custom-icon-switch-copy" }, [h("span", "显示 LOGO"), h("small", "关闭后隐藏加载页面底部的品牌标识")]),
-              h(Switch, { modelValue: draft.splashShowLogo, loading: saving.value, disabled: saving.value, "onUpdate:modelValue": (v) => setVal("splashShowLogo", Boolean(v)) }),
+              h("div", { class: "custom-icon-switch-copy" }, [h("span", "纯净画面"), h("small", !draft.splashEnabled ? "请先开启自定义启动画面" : draft.splashImagePath ? "开启后隐藏加载页面的其他元素，仅保留图片" : "请先选择启动画面")]),
+              h(Switch, { modelValue: !draft.splashShowLogo, loading: saving.value, disabled: saving.value || !draft.splashEnabled || !draft.splashImagePath, "onUpdate:modelValue": (v) => setVal("splashShowLogo", !Boolean(v)) }),
             ]),
+          ]),
+          h("div", { class: "custom-icon-field", style: draft.splashEnabled && draft.splashShowLogo && draft.splashImagePath ? "" : "opacity:0.5;pointer-events:none" }, [
+            h("div", { class: "custom-icon-field-label" }, "状态文字"),
+            h("input", { type: "text", value: draft.splashStatusText, placeholder: "引擎就绪，正在开启音乐世界...", disabled: !draft.splashEnabled || !draft.splashShowLogo || !draft.splashImagePath, onInput: (e) => setVal("splashStatusText", e.target.value), style: "width:100%;padding:6px 8px;border:1px solid color-mix(in srgb,var(--color-text-main,#f8fafc) 12%,transparent);border-radius:6px;background:transparent;color:var(--color-text-main,var(--text-main,#f8fafc));font-size:12px;outline:none" }),
+          ]),
+          h("div", { class: "custom-icon-field", style: draft.splashEnabled && draft.splashShowLogo && draft.splashImagePath ? "" : "opacity:0.5;pointer-events:none" }, [
+            h("div", { class: "custom-icon-field-label" }, "底部文字"),
+            h("input", { type: "text", value: draft.splashFooterText, placeholder: "ECHOMUSIC·音为你而生", disabled: !draft.splashEnabled || !draft.splashShowLogo || !draft.splashImagePath, onInput: (e) => setVal("splashFooterText", e.target.value), style: "width:100%;padding:6px 8px;border:1px solid color-mix(in srgb,var(--color-text-main,#f8fafc) 12%,transparent);border-radius:6px;background:transparent;color:var(--color-text-main,var(--text-main,#f8fafc));font-size:12px;outline:none" }),
           ]),
         ]),
         h("div", { class: "custom-icon-section" }, [
