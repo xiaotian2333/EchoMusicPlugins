@@ -65,35 +65,7 @@ let settingsStyleDispose = null;
 
 const buildSettingsFromDraft = (draft, overrides = {}) => ({
   ...DEFAULT_SETTINGS,
-  enabled: draft.enabled,
-  splashEnabled: draft.splashEnabled,
-  trayIconPath: draft.trayIconPath,
-  trayRelativePath: draft.trayRelativePath,
-  trayPreviewUrl: draft.trayPreviewUrl,
-  taskbarIconPath: draft.taskbarIconPath,
-  taskbarRelativePath: draft.taskbarRelativePath,
-  taskbarPreviewUrl: draft.taskbarPreviewUrl,
-  desktopIconPath: draft.desktopIconPath,
-  desktopRelativePath: draft.desktopRelativePath,
-  desktopPreviewUrl: draft.desktopPreviewUrl,
-  splashImagePath: draft.splashImagePath,
-  splashRelativePath: draft.splashRelativePath,
-  splashPreviewUrl: draft.splashPreviewUrl,
-  splashDuration: draft.splashDuration,
-  splashScale: draft.splashScale,
-  splashOverlayOpacity: draft.splashOverlayOpacity,
-  splashOverlayColor: draft.splashOverlayColor,
-  splashBlurAmount: draft.splashBlurAmount,
-  splashBgColor: draft.splashBgColor,
-  splashShowLogo: draft.splashShowLogo,
-  splashStatusText: draft.splashStatusText,
-  splashFooterText: draft.splashFooterText,
-  splashAudioEnabled: draft.splashAudioEnabled,
-  splashAudioPath: draft.splashAudioPath,
-  splashAudioRelativePath: draft.splashAudioRelativePath,
-  splashAudioPreviewUrl: draft.splashAudioPreviewUrl,
-  splashAudioVolume: draft.splashAudioVolume,
-  splashAudioDuration: draft.splashAudioDuration,
+  ...draft,
   ...overrides,
 });
 
@@ -207,7 +179,7 @@ const playSplashAudio = async (ctx, settings) => {
     }
     if (!url) {
       const mime = getAudioMime(ext);
-      const result = await ctx.fs.readFileBytes(settings.splashAudioPath, { maxBytes: 10 * 1024 * 1024 });
+      const result = await ctx.fs.readFileBytes(settings.splashAudioPath, { maxBytes: 4 * 1024 * 1024 });
       if (!result?.ok) return;
       url = bufferToDataUrl(result.data, mime);
     }
@@ -260,7 +232,7 @@ const resolveImageUrl = async (ctx, filePath) => {
     const r = await ctx.fs.getFileUrl(filePath);
     if (r.ok && r.url) return r.url;
   } catch {}
-  return `file://${filePath.replace(/\\/g, "/")}`;
+  return `file:///${filePath.replace(/\\/g, "/")}`;
 };
 
 const applySplashCss = async (ctx, settings) => {
@@ -666,7 +638,7 @@ const createSettingsComponent = (ctx) =>
           let url = draft.splashAudioPreviewUrl;
           if (!url) {
             const mime = getAudioMime(ext);
-            const result = await ctx.fs.readFileBytes(draft.splashAudioPath, { maxBytes: 10 * 1024 * 1024 });
+            const result = await ctx.fs.readFileBytes(draft.splashAudioPath, { maxBytes: 4 * 1024 * 1024 });
             if (result?.ok) url = bufferToDataUrl(result.data, mime);
           }
           if (!url) return;
@@ -981,6 +953,18 @@ export async function activate(ctx) {
   }
 
   try { await ctx.appIcons.refresh(); } catch {}
+
+  ctx.dispose(() => {
+    settingsDispose?.(); settingsDispose = null;
+    settingsStyleDispose?.(); settingsStyleDispose = null;
+    removeSplash();
+    removeSplashCss();
+    stopSplashAudio();
+    const lv = document.querySelector(".loading-view");
+    if (lv) { const img = lv.querySelector(".custom-splash-img"); if (img) img.remove(); lv.style.removeProperty("background-image"); }
+    splashObserverDispose?.(); splashObserverDispose = null;
+    state = null;
+  });
 }
 
 export function deactivate() {
