@@ -189,17 +189,6 @@
       ]
     },
     {
-      "id": "more-lyric-styles",
-      "path": "more-lyric-styles",
-      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/more-lyric-styles",
-      "tags": [
-        "lyrics",
-        "lyric-effects",
-        "appearance",
-        "animation"
-      ]
-    },
-    {
       "id": "custom-icon",
       "name": "自定义图标",
       "description": "允许用户自定义托盘图标、窗口标题栏图标、任务栏图标、桌面快捷方式图标以及启动画面。",
@@ -224,17 +213,6 @@
       "tags": [
         "theme",
         "beautify"
-      ]
-    },
-    {
-      "id": "xiami-lyric-scroll",
-      "path": "xiami-lyric-scroll",
-      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/xiami-lyric-scroll",
-      "tags": [
-        "lyrics",
-        "lyric-effects",
-        "appearance",
-        "animation"
       ]
     }
   ]
