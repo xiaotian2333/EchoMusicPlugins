@@ -84,9 +84,43 @@ EchoMusicPlugins/
 
 ## 依赖
 
-- EchoMusic >= 2.2.6-beta.11
+- EchoMusic >= 2.2.7-beta.13
 
 ## 更新日志
+
+### v1.3.2
+
+- 使用主应用 `Tabs/TabsList/TabsTrigger` 替换自定义库标签栏
+- 使用主应用 `Drawer` 替换自定义批量操作抽屉，移除约 180 行自定义 CSS
+- 使用主应用 `DetailPageActionRow` 替换手动操作按钮
+- 使用主应用 `Badge` 组件替换手动角标
+- 使用主应用 `Scrollbar` 组件替换批量抽屉内原生滚动条
+- 批量抽屉样式完全匹配主应用 `BatchActionDrawer`
+- 修复切歌时封面空白闪烁问题：创建歌曲时立即使用兜底封面
+- 修复吸顶收起后缺少批量按钮的问题
+- 修复点击暂停图标不暂停的问题：使用 `ctx.player.toggle()` 切换播放/暂停
+- 代码优化：缓存重复 `buildAuthHeader` 调用、移除冗余代码、提取常量
+
+### v1.3.1
+
+- 使用主应用 `Tabs/TabsList/TabsTrigger` 替换自定义库标签栏
+- 使用主应用 `Drawer` 替换自定义批量操作抽屉，移除约 180 行自定义 CSS
+- 使用主应用 `DetailPageActionRow` 替换手动操作按钮
+- 使用主应用 `Badge` 组件替换手动角标
+- 使用主应用 `Scrollbar` 组件替换批量抽屉内原生滚动条
+- 批量抽屉样式完全匹配主应用 `BatchActionDrawer`
+- 修复切歌时封面空白闪烁问题：创建歌曲时立即使用兜底封面
+- 修复吸顶收起后缺少批量按钮的问题
+
+### v1.3.0
+
+- **使用主应用 UI 组件**：浏览页重构为使用主程序暴露的 `DetailPageSliverHeader`、`Button`、`Input`、`Scrollbar` 等组件，样式与主应用完全一致
+- **吸顶展开/收缩动画**：通过 `DetailPageSliverHeader` 实现标题栏吸顶动画，滚动时自动收缩
+- **吸顶后播放/批量按钮**：收缩后右上角显示播放和批量两个操作按钮
+- **主应用 CSS 变量**：行高亮、激活行、选中行等样式改用主应用 CSS 变量（`--row-hover-bg`、`--row-selected-bg`、`--row-active-bg`），主题切换时自动跟随
+- **主应用播放图标样式**：歌曲左侧播放三角使用 `tabler:play`（纯三角形），激活行播放中显示暂停图标、暂停时显示播放图标，与主应用完全一致
+- **响应式主题色封面**：封面渐变背景使用 CSS 变量 `var(--color-primary)`，主题色变化时零延迟跟随
+- **代码优化**：移除死代码（未使用的函数、CSS 类、重复变量），提取重复 SVG 路径为常量，净减约 160 行
 
 ### v1.2.2
 
