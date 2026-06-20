@@ -1474,7 +1474,7 @@ const createBrowserPage = (ctx, state) => {
             collapsedHeight: 56,
           }, {
             details: () => h("div", { class: "flex flex-col gap-2" }, [
-              h("div", { class: "text-[13px] font-semibold text-text-secondary" }, "连接WebDAV 服务器，浏览和播放云端音乐文件"),
+              h("div", { class: "text-[13px] font-semibold text-text-secondary" }, "连接WebDAV服务器，浏览和播放云端音乐文件。"),
               h("div", { class: "inline-flex items-center gap-1.5 text-[11px] font-semibold", style: "color: var(--color-text-secondary); opacity: 0.8;" }, [
                 h(Icon, { icon: "tabler:server", width: 12, height: 12 }),
                 h("span", {}, searchQuery.value.trim() ? `${displayCount} / ${songCount} 首歌曲` : `${songCount} 首歌曲`),
