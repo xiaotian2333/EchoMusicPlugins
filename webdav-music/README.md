@@ -88,6 +88,10 @@ EchoMusicPlugins/
 
 ## 更新日志
 
+### v1.3.5
+
+- 修复歌词选择窗中候选歌曲标题重复显示歌手名的问题：使用酷狗返回的 `SongName` 字段替代包含歌手前缀的 `FileName`
+
 ### v1.3.4
 
 - 提取 `fetchFolderCover` 辅助函数，消除 3 处封面检测重复代码

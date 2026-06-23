@@ -1919,7 +1919,7 @@ export async function activate(ctx) {
                   seen.add(key);
                   candidates.push({
                     id: c.id, accesskey: c.accesskey,
-                    singer: match.SingerName || "", song: match.SongName || match.FileName || "",
+                    singer: match.SingerName || "", song: match.SongName || "",
                     score: c.score ?? 0, duration: c.duration ?? 0,
                     krctype: c.krctype ?? 0, contenttype: c.contenttype ?? 0,
                     product_from: c.product_from || "", language: c.language || "",
