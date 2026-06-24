@@ -957,67 +957,60 @@ const createSettingsPanel = (ctx, state) => {
         const isExpanded = expandedLibraries.value.has(lib.id);
         const displayName = lib.name || (lib.serverUrl ? new URL(lib.serverUrl).hostname : "未命名库");
         
-        return h("div", {
-          style: "border: 1px solid var(--border-subtle); border-radius: 8px; overflow: hidden;",
-        }, [
+        return h("div", { class: "pm-group" }, [
           // 折叠头
-          h("div", {
-            style: "display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; cursor: pointer; background: var(--control-muted-bg);",
-            onClick: () => toggleLibrary(lib.id),
-          }, [
-            h("div", { style: "display: flex; align-items: center; gap: 8px;" }, [
-              h("span", { style: "font-size: 13px; font-weight: 600; color: var(--color-text-main);" }, displayName),
+          h("div", { class: "pm-group-header", onClick: () => toggleLibrary(lib.id) }, [
+            h("div", { class: "pm-group-header-title" }, [
+              h("span", { class: ["pm-group-arrow", isExpanded ? "" : "is-collapsed"], innerHTML: "▼" }),
+              h("span", null, displayName),
               lib.serverUrl
-                ? h("span", { style: "font-size: 11px; color: var(--color-text-secondary);" }, new URL(lib.serverUrl).hostname)
+                ? h("span", { class: "pm-group-header-count" }, new URL(lib.serverUrl).hostname)
                 : null,
             ]),
-            h("span", {
-              style: `font-size: 12px; color: var(--color-text-secondary); transition: transform 0.2s; transform: rotate(${isExpanded ? "180deg" : "0deg"});`,
-            }, "▼"),
           ]),
           // 展开内容
-          isExpanded
-            ? h("div", { style: "padding: 12px; display: grid; gap: 10px; background: var(--color-bg-elevated);" }, [
-                formRow("名称", h(Input, {
-                  modelValue: lib.name,
-                  placeholder: "留空则显示根目录名称",
-                  inputClass: "!h-9 !rounded-lg !pl-3 !pr-3 !text-[13px]",
-                  "onUpdate:modelValue": (v) => updateLibrary(lib.id, "name", String(v ?? "")),
-                }), "显示在浏览页面的标签页名称"),
-                formRow("地址", h(Input, {
-                  modelValue: lib.serverUrl,
-                  placeholder: "https://webdav.example.com",
-                  inputClass: "!h-9 !rounded-lg !pl-3 !pr-3 !text-[13px]",
-                  "onUpdate:modelValue": (v) => updateLibrary(lib.id, "serverUrl", String(v ?? "")),
-                })),
-                formRow("用户名", h(Input, {
-                  modelValue: lib.username,
-                  placeholder: "可选，留空表示无需认证",
-                  inputClass: "!h-9 !rounded-lg !pl-3 !pr-3 !text-[13px]",
-                  "onUpdate:modelValue": (v) => updateLibrary(lib.id, "username", String(v ?? "")),
-                })),
-                formRow("密码", h(Input, {
-                  modelValue: lib.password,
-                  placeholder: "可选",
-                  type: "password",
-                  inputClass: "!h-9 !rounded-lg !pl-3 !pr-3 !text-[13px]",
-                  "onUpdate:modelValue": (v) => updateLibrary(lib.id, "password", String(v ?? "")),
-                })),
-                formRow("根目录", h(Input, {
-                  modelValue: lib.rootPath,
-                  placeholder: "/",
-                  inputClass: "!h-9 !rounded-lg !pl-3 !pr-3 !text-[13px]",
-                  "onUpdate:modelValue": (v) => updateLibrary(lib.id, "rootPath", String(v ?? "/")),
-                }), "浏览音乐文件的起始路径，默认为根目录 /"),
-                h("div", { style: "display: flex; justify-content: flex-end;" }, [
-                  h(Button, {
-                    size: "xs",
-                    variant: "outline",
-                    onClick: () => removeLibrary(lib.id),
-                  }, { default: () => "删除此库" }),
-                ]),
-              ])
-            : null,
+          h("div", { class: ["pm-group-body", isExpanded ? "" : "is-collapsed"] }, [
+            h("div", { style: "padding: 12px; display: grid; gap: 10px;" }, [
+              formRow("名称", h(Input, {
+                modelValue: lib.name,
+                placeholder: "留空则显示根目录名称",
+                inputClass: "!h-9 !rounded-lg !pl-3 !pr-3 !text-[13px]",
+                "onUpdate:modelValue": (v) => updateLibrary(lib.id, "name", String(v ?? "")),
+              }), "显示在浏览页面的标签页名称"),
+              formRow("地址", h(Input, {
+                modelValue: lib.serverUrl,
+                placeholder: "https://webdav.example.com",
+                inputClass: "!h-9 !rounded-lg !pl-3 !pr-3 !text-[13px]",
+                "onUpdate:modelValue": (v) => updateLibrary(lib.id, "serverUrl", String(v ?? "")),
+              })),
+              formRow("用户名", h(Input, {
+                modelValue: lib.username,
+                placeholder: "可选，留空表示无需认证",
+                inputClass: "!h-9 !rounded-lg !pl-3 !pr-3 !text-[13px]",
+                "onUpdate:modelValue": (v) => updateLibrary(lib.id, "username", String(v ?? "")),
+              })),
+              formRow("密码", h(Input, {
+                modelValue: lib.password,
+                placeholder: "可选",
+                type: "password",
+                inputClass: "!h-9 !rounded-lg !pl-3 !pr-3 !text-[13px]",
+                "onUpdate:modelValue": (v) => updateLibrary(lib.id, "password", String(v ?? "")),
+              })),
+              formRow("根目录", h(Input, {
+                modelValue: lib.rootPath,
+                placeholder: "/",
+                inputClass: "!h-9 !rounded-lg !pl-3 !pr-3 !text-[13px]",
+                "onUpdate:modelValue": (v) => updateLibrary(lib.id, "rootPath", String(v ?? "/")),
+              }), "浏览音乐文件的起始路径，默认为根目录 /"),
+              h("div", { style: "display: flex; justify-content: flex-end;" }, [
+                h(Button, {
+                  size: "xs",
+                  variant: "outline",
+                  onClick: () => removeLibrary(lib.id),
+                }, { default: () => "删除此库" }),
+              ]),
+            ]),
+          ]),
         ]);
       };
 
@@ -1974,6 +1967,19 @@ export async function activate(ctx) {
       background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='3' width='20' height='9' rx='3' stroke='white' stroke-opacity='.85' stroke-width='2' fill='none'/%3E%3Crect x='2' y='12' width='20' height='9' rx='3' stroke='white' stroke-opacity='.85' stroke-width='2' fill='none'/%3E%3Ccircle cx='5' cy='7.5' r='1.2' fill='white' fill-opacity='.85'/%3E%3Ccircle cx='5' cy='16.5' r='1.2' fill='white' fill-opacity='.85'/%3E%3C/svg%3E") center/48% no-repeat;
     }
   `, { id: "webdav-cover-override" });
+
+  // 折叠卡片样式（与自定义图标插件一致）
+  ctx.css.inject(`
+    .pm-group{border:1px solid color-mix(in srgb,var(--color-text-main,#f8fafc) 12%,transparent);border-radius:8px;background:color-mix(in srgb,var(--surface-elevated-base,#111827) 72%,transparent);overflow:hidden}
+    .pm-group-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;cursor:pointer;user-select:none;transition:background .15s}
+    .pm-group-header:hover{background:color-mix(in srgb,var(--color-text-main,#f8fafc) 5%,transparent)}
+    .pm-group-header-title{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--color-text-main,var(--text-main,#f8fafc))}
+    .pm-group-header-count{color:var(--color-text-secondary,var(--text-secondary,rgba(148,163,184,0.9)));font-weight:500}
+    .pm-group-arrow{transition:transform .2s;color:var(--color-text-secondary,var(--text-secondary,rgba(148,163,184,0.9)));font-size:10px}
+    .pm-group-arrow.is-collapsed{transform:rotate(-90deg)}
+    .pm-group-body{max-height:500px;overflow-y:auto;transition:max-height .25s ease-out}
+    .pm-group-body.is-collapsed{max-height:0}
+  `, { id: "webdav-collapsible-styles" });
 
   ctx.ui.settings.define({
     title: "WebDAV 音乐",
