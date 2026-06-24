@@ -226,6 +226,21 @@
       "tags": [
         "beautify"
       ]
-    }
+    },
+    {
+  "id": "zhangsan-toolkit",
+  "name": "张三工具集",
+  "description": "愿有人陪你一起颠沛流离。含热门排序、隐藏自建歌单、歌词隐藏控制栏、隐藏听歌识曲、顶部插件快捷按钮",
+  "author": "张三",
+  "path": "zhangsan-toolkit",
+  "homepage": "https://github.com/Max8808/EchoMusicPlugins/tree/main/zhangsan-toolkit",
+  "tags": [
+    "toolkit",
+    "sort",
+    "appearance",
+    "lyrics",
+    "productivity"
+  ]
+}
   ]
 }
