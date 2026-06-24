@@ -1094,7 +1094,7 @@ const createSettingsComponent = (ctx) =>
             ? h("div", { class: "custom-icon-section" }, [
                 h("div", { style: "color:var(--color-text-secondary,rgba(148,163,184,0.9));font-size:12px;text-align:center;padding:16px 0" }, "请先登录并加载歌单数据"),
               ])
-            : h("div", { class: "custom-icon-section", style: "display:grid;gap:12px" }, [
+            : h("div", { style: "display:grid;gap:12px" }, [
                 renderGroup("自建歌单", created, pmCreatedCollapsed, () => { pmCreatedCollapsed.value = !pmCreatedCollapsed.value; }),
                 renderGroup("收藏歌单", favorited, pmFavoritedCollapsed, () => { pmFavoritedCollapsed.value = !pmFavoritedCollapsed.value; }),
               ]),
