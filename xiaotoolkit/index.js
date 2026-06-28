@@ -8,12 +8,91 @@ var ctx = null;
 var disposeSettings = null;
 
 // ================== 7. 桌面特效 ==================
+// 使用 OffscreenCanvas + Web Worker，粒子渲染跑在独立线程，切歌不卡
 
+var _effectWorker = null;
 var _effectCanvas = null;
-var _effectAnimId = null;
-var _effectParticles = [];
 var _effectCount = 80;
 var _effectMode = 'snow';
+
+// 生成 Worker 脚本（Blob URL），避免单独文件
+function _eBuildWorker() {
+  var code = [
+    'var MODES=' + JSON.stringify(_effectModes) + ';',
+    'var COUNT=' + _effectCount + ';',
+    'var mode="' + _effectMode + '";',
+    'var canvas=null,ctx=null,w=0,h=0,particles=[],animId=null,cfg=null,shape="",color="";',
+    'var lastTime=0;',
+    // Worker 没有 window，用 getter 代理到 w/h
+    'var window={get innerWidth(){return w},get innerHeight(){return h}};',
+    'function rand(a,b){return a+Math.random()*(b-a)}',
+    'function mkParticle(){',
+    '  var c=cfg,s=rand(c.sizeRange[0],c.sizeRange[1]);',
+    '  return{x:Math.random()*w,y:mode==="fire"?h+Math.random()*h*0.2:-s-Math.random()*h*0.4,r:s,speed:rand(c.speedRange[0],c.speedRange[1]),wind:rand(c.windRange[0],c.windRange[1]),opacity:rand(c.opacityRange[0],c.opacityRange[1]),gravity:c.gravity,rot:Math.random()*Math.PI*2,rotSpeed:rand(-0.03,0.03),phase:Math.random()*Math.PI*2}',
+    '}',
+    // 嵌入绘制函数（精简版，与主线程相同逻辑）
+    _edrawSnowflake.toString().replace(/function _edrawSnowflake/, 'function drSnow'),
+    _edrawOval.toString().replace(/function _edrawOval/, 'function drOval'),
+    _edrawHeart.toString().replace(/function _edrawHeart/, 'function drHeart'),
+    _edrawConfetti.toString().replace(/function _edrawConfetti/, 'function drConf'),
+    _edrawStar.toString().replace(/function _edrawStar/, 'function drStar'),
+    _edrawMaple.toString().replace(/function _edrawMaple/, 'function drMaple'),
+    _edrawSakura.toString().replace(/function _edrawSakura/, 'function drSaku'),
+    _edrawRosePetal.toString().replace(/function _edrawRosePetal/, 'function drPetal'),
+    _edrawAurora.toString().replace(/function _edrawAurora/, 'function drAuro'),
+    _edrawFire.toString().replace(/function _edrawFire/, 'function drFire'),
+    _edrawLine.toString().replace(/function _edrawLine/, 'function drLine'),
+    'function frame(now){',
+    '  if(!ctx)return;',
+    '  var dt=Math.min((now||0)-lastTime,50);lastTime=now||0;var f=dt/16.667;',
+    '  ctx.clearRect(0,0,w,h);',
+    '  for(var i=0;i<particles.length;i++){',
+    '    var p=particles[i];',
+    '    p.y+=(p.speed*p.gravity+0.2)*f;p.x+=(p.wind+Math.sin(p.phase)*0.2)*f;p.rot+=p.rotSpeed*f;p.phase+=0.01*f;',
+    '    if(p.y>h+p.r*2||(mode==="fire"&&p.y<-p.r*2)){particles[i]=mkParticle();continue}',
+    '    if(p.x>w+p.r)p.x=-p.r;if(p.x<-p.r)p.x=w+p.r;',
+    '    switch(shape){',
+    '      case"snowflake":drSnow(ctx,p,color);break;',
+    '      case"circle":ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle="rgba("+color+","+p.opacity+")";ctx.fill();break;',
+    '      case"maple":drMaple(ctx,p,color);break;',
+    '      case"petal":drPetal(ctx,p,color);break;',
+    '      case"sakura":drSaku(ctx,p,color);break;',
+    '      case"heart":drHeart(ctx,p,color);break;',
+    '      case"confetti":drConf(ctx,p);break;',
+    '      case"fire":drFire(ctx,p,color);break;',
+    '      case"line":drLine(ctx,p,color);break;',
+    '      case"colorstar":drStar(ctx,p,"colorstar");break;',
+    '      case"aurora":drAuro(ctx,p);break;',
+    '    }',
+    '  }',
+    '  animId=requestAnimationFrame(frame);',
+    '}',
+    'function restart(nm){',
+    '  if(animId){cancelAnimationFrame(animId);animId=null}',
+    '  mode=nm||mode;cfg=MODES[mode]||MODES.snow;',
+    '  shape=mode==="snow"?"snowflake":cfg.shape;color=cfg.color;',
+    '  particles=[];',
+    '  for(var i=0;i<COUNT;i++)particles.push(mkParticle());',
+    '  lastTime=0;animId=requestAnimationFrame(frame);',
+    '}',
+    'self.onmessage=function(e){',
+    '  var d=e.data;',
+    '  if(d.type==="init"){',
+    '    canvas=d.canvas;ctx=canvas.getContext("2d");w=canvas.width;h=canvas.height;',
+    '    restart(mode);',
+    '  }else if(d.type==="switch"){',
+    '    restart(d.mode);',
+    '  }else if(d.type==="resize"){',
+    '    w=d.w;h=d.h;canvas.width=w;canvas.height=h;',
+    '    restart(mode);',
+    '  }else if(d.type==="stop"){',
+    '    if(animId){cancelAnimationFrame(animId);animId=null}',
+    '    particles=[];ctx=null;canvas=null;',
+    '  }',
+    '}',
+  ].join('\n');
+  return new Blob([code], { type: 'application/javascript' });
+}
 
 var _effectModes = {
   snow: { label: '❄️ 下雪', color: '255,255,255', sizeRange: [2, 6], speedRange: [0.4, 1.6], windRange: [-0.3, 0.8], opacityRange: [0.4, 0.9], gravity: 1, shape: 'circle' },
@@ -50,35 +129,72 @@ function _edrawFire(g, p, c) { g.save(); g.translate(p.x, p.y); g.rotate(p.rot);
 function _edrawLine(g, p, c) { g.beginPath(); g.moveTo(p.x, p.y - p.r); g.lineTo(p.x, p.y + p.r); g.strokeStyle = 'rgba(' + c + ',' + p.opacity + ')'; g.lineWidth = 1.5; g.stroke(); }
 
 function startEffect(mode) {
+  var newMode = mode || _effectMode;
+  if (!_effectModes[newMode]) newMode = 'snow';
+
+  // 已有 Worker 且同模式 → 跳过
+  if (_effectWorker && _effectMode === newMode) return;
+  _effectMode = newMode;
+
+  // 创建 canvas（首次）
   if (!_effectCanvas) {
     var c = document.createElement('canvas');
     c.id = 'zhs-effect-canvas';
-    c.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999;';
+    c.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999;transform:translateZ(0);will-change:transform;contain:strict;';
     document.body.appendChild(c);
     _effectCanvas = c;
   }
-  var newMode = mode || _effectMode;
-  if (!_effectModes[newMode]) newMode = 'snow';
-  if (_effectMode === newMode && _effectAnimId) return;
+  _effectCanvas.style.display = 'block';
+
+  // 已有 Worker → 发送切换指令（走 postMessage，不碰 canvas）
+  if (_effectWorker) {
+    _effectWorker.postMessage({ type: 'switch', mode: newMode });
+    return;
+  }
+
+  // 创建 canvas + Worker（首次）
+  var w = window.innerWidth, h = window.innerHeight;
+  _effectCanvas.width = w; _effectCanvas.height = h;
+
+  try {
+    var offscreen = _effectCanvas.transferControlToOffscreen();
+    var blob = _eBuildWorker();
+    var url = URL.createObjectURL(blob);
+    _effectWorker = new Worker(url);
+    URL.revokeObjectURL(url);
+    _effectWorker.postMessage({ type: 'init', canvas: offscreen }, [offscreen]);
+    _effectWorker.postMessage({ type: 'switch', mode: newMode });
+  } catch (e) {
+    console.warn('[xiaotoolkit] OffscreenCanvas 不可用，回退主线程渲染:', e);
+    _effectWorker = null;
+    _effectFallbackRender(newMode);
+  }
+}
+
+// 回退方案：主线程渲染（delta-time）
+var _effectAnimId = null;
+var _effectParticles = [];
+function _effectFallbackRender(mode) {
   if (_effectAnimId) { cancelAnimationFrame(_effectAnimId); _effectAnimId = null; }
-  _effectMode = newMode;
-  var cfg = _effectModes[_effectMode];
+  var cfg = _effectModes[mode] || _effectModes.snow;
   var c = _effectCanvas;
   var w = window.innerWidth, h = window.innerHeight;
   c.width = w; c.height = h;
-  c.style.display = 'block';
   var g = c.getContext('2d');
-  var shape = _effectMode === 'snow' ? 'snowflake' : cfg.shape;
+  var shape = mode === 'snow' ? 'snowflake' : cfg.shape;
   var color = cfg.color;
   _effectParticles = [];
-
-  for (var i = 0; i < _effectCount; i++) _effectParticles.push(_ecreateParticle(w, h, _effectMode));
-  function draw() {
+  for (var i = 0; i < _effectCount; i++) _effectParticles.push(_ecreateParticle(w, h, mode));
+  var lastTime = performance.now();
+  function draw(now) {
+    var dt = Math.min((now || performance.now()) - lastTime, 50);
+    lastTime = now || performance.now();
+    var f = dt / 16.667;
     g.clearRect(0, 0, w, h);
     for (var i = 0; i < _effectParticles.length; i++) {
       var p = _effectParticles[i];
-      p.y += p.speed * p.gravity + 0.2; p.x += p.wind + Math.sin(p.phase) * 0.2; p.rot += p.rotSpeed; p.phase += 0.01;
-      if (p.y > h + p.r * 2 || (_effectMode === 'fire' && p.y < -p.r * 2)) { _effectParticles[i] = _ecreateParticle(w, h, _effectMode); continue; }
+      p.y += (p.speed * p.gravity + 0.2) * f; p.x += (p.wind + Math.sin(p.phase) * 0.2) * f; p.rot += p.rotSpeed * f; p.phase += 0.01 * f;
+      if (p.y > h + p.r * 2 || (mode === 'fire' && p.y < -p.r * 2)) { _effectParticles[i] = _ecreateParticle(w, h, mode); continue; }
       if (p.x > w + p.r) p.x = -p.r; if (p.x < -p.r) p.x = w + p.r;
       switch (shape) {
         case 'snowflake': _edrawSnowflake(g, p, color); break;
@@ -91,18 +207,25 @@ function startEffect(mode) {
         case 'fire': _edrawFire(g, p, color); break;
         case 'line': _edrawLine(g, p, color); break;
         case 'colorstar': _edrawStar(g, p, 'colorstar'); break;
-
         case 'aurora': _edrawAurora(g, p); break;
       }
     }
     _effectAnimId = requestAnimationFrame(draw);
   }
-  draw();
+  draw(performance.now());
 }
 
 function stopEffect() {
+  if (_effectWorker) {
+    _effectWorker.postMessage({ type: 'stop' });
+    _effectWorker.terminate();
+    _effectWorker = null;
+  }
   if (_effectAnimId) { cancelAnimationFrame(_effectAnimId); _effectAnimId = null; }
-  if (_effectCanvas) { _effectCanvas.style.display = 'none'; }
+  if (_effectCanvas) {
+    _effectCanvas.remove();
+    _effectCanvas = null;
+  }
   _effectParticles = [];
 }
 
@@ -328,8 +451,8 @@ function stopClickToPlay() {
   if (_clickDispose) { _clickDispose(); _clickDispose = null; }
 }
 
-// ================ 4. 首页每日推荐一键播放 ================
-// 点击每日推荐卡片的播放按钮，直接播放今日推荐，不跳转页面
+// ================ 4. 首页卡片一键播放 ================
+// 点击每日推荐/排行榜卡片的播放按钮或图标区域，直接播放，不跳转页面
 
 var _dailyDispose = null;
 var _dailyPlaying = false;
@@ -385,15 +508,46 @@ function parseIntSafe(v, fallback) {
   return isNaN(n) ? (fallback || 0) : n;
 }
 
+// 复刻官方 formatPic：替换 {size} 占位符 + 补全协议
+function formatPic(value) {
+  if (!value) return '';
+  var pic = String(value).replace(/\{size\}/g, '400');
+  if (pic.indexOf('//') === 0) pic = 'https:' + pic;
+  return pic;
+}
+
+// 复刻官方 normalizeCoverUrl：协议统一 + 域名替换
+function normalizeCoverUrl(url, size) {
+  size = size || 400;
+  var raw = String(url || '').trim();
+  if (!raw) return '';
+  var cover = raw.replace('http://', 'https://');
+  if (cover.indexOf('{size}') !== -1) {
+    cover = cover.replace(/\{size\}/g, String(size));
+  }
+  return cover.replace(/c1\.kgimg\.com/g, 'imge.kugou.com');
+}
+
+function resolveCover(url, size) {
+  return normalizeCoverUrl(formatPic(url), size);
+}
+
 function mapDailySong(item) {
   var record = item || {};
+  var transParam = record.trans_param || {};
   var singer = pickValue(record.author_name, record.singername, record.singer, record.artist, '');
   var name = pickValue(record.songname, record.filename, record.name, record.title, '未知歌曲');
   var hash = pickValue(record.hash, record.FileHash, record.hash_128, '');
   var id = pickValue(record.mixsongid, record.audio_id, record.album_audio_id, hash, '');
   var durationRaw = parseIntSafe(pickValue(record.time_length, record.timelength, record.duration, 0));
   var duration = durationRaw > 100000 ? Math.floor(durationRaw / 1000) : durationRaw;
-  var cover = pickValue(record.album_sizable_cover, record.cover, record.pic, '');
+  // 复刻官方 mapTopSong 封面字段顺序：album_sizable_cover > sizable_cover > cover > pic > img > union_cover
+  var rawCover = pickValue(
+    record.album_sizable_cover, record.sizable_cover,
+    record.cover, record.pic, record.img,
+    transParam.union_cover, ''
+  );
+  var cover = resolveCover(rawCover, 400);
   var album = pickValue(record.album_name, record.albumname, record.album, '');
 
   return {
@@ -403,8 +557,8 @@ function mapDailySong(item) {
     name: name,
     artist: String(singer || '未知歌手'),
     duration: duration,
-    coverUrl: String(cover),
-    cover: String(cover),
+    coverUrl: cover,
+    cover: cover,
     audioUrl: '',
     hash: String(hash),
     mixSongId: parseIntSafe(id, 0),
@@ -416,7 +570,7 @@ function mapDailySong(item) {
 }
 
 function mapRankSong(item) {
-  // 简版 mapRankSong
+  // 简版 mapRankSong，复刻官方 mapRankSong
   var record = item || {};
   var audioInfo = record.audio_info || {};
   var albumInfo = record.album_info || {};
@@ -428,7 +582,12 @@ function mapRankSong(item) {
   var id = record.audio_id || record.mixsongid || audioInfo.audio_id || hash;
   var durationRaw = parseIntSafe(audioInfo.duration_128 || audioInfo.duration || 0);
   var duration = durationRaw > 100000 ? Math.floor(durationRaw / 1000) : durationRaw;
-  var cover = albumInfo.sizable_cover || transParam.union_cover || record.img || record.pic || '';
+  // 复刻官方 mapRankSong 封面字段顺序：albumInfo.sizable_cover > union_cover > img > pic
+  var rawCover = pickValue(
+    albumInfo.sizable_cover, transParam.union_cover,
+    record.img, record.pic, ''
+  );
+  var cover = resolveCover(rawCover, 400);
   var album = albumInfo.album_name || record.album_name || '';
 
   return {
@@ -438,8 +597,8 @@ function mapRankSong(item) {
     name: name,
     artist: String(singer || '未知歌手'),
     duration: duration,
-    coverUrl: String(cover),
-    cover: String(cover),
+    coverUrl: cover,
+    cover: cover,
     audioUrl: '',
     hash: String(hash),
     mixSongId: parseIntSafe(id, 0),
