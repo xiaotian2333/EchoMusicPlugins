@@ -25,6 +25,17 @@
       ]
     },
     {
+      "id": "apple-music-lyrics",
+      "path": "apple-music-lyrics",
+      "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/apple-music-lyrics",
+      "tags": [
+        "appearance",
+        "lyrics",
+        "lyric-effects",
+        "animation"
+      ]
+    },
+    {
       "id": "page-motion",
       "path": "page-motion",
       "homepage": "https://github.com/hoowhoami/EchoMusicPlugins/tree/main/page-motion",

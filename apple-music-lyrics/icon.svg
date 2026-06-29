@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Apple Music Lyrics">
+  <defs>
+    <linearGradient id="bg" x1="16" y1="12" x2="82" y2="86" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff5c7a"/>
+      <stop offset=".48" stop-color="#ff8f5a"/>
+      <stop offset="1" stop-color="#7c5cff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="36" cy="28" r="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity=".58"/>
+      <stop offset=".52" stop-color="#fff" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="96" height="96" rx="24" fill="url(#bg)"/>
+  <rect width="96" height="96" rx="24" fill="url(#glow)"/>
+  <path d="M28 31h40a4 4 0 0 1 0 8H28a4 4 0 0 1 0-8Zm0 16h30a4 4 0 0 1 0 8H28a4 4 0 0 1 0-8Zm0 16h36a4 4 0 0 1 0 8H28a4 4 0 0 1 0-8Z" fill="#fff" opacity=".92"/>
+  <path d="M28 47h18a4 4 0 0 1 0 8H28a4 4 0 0 1 0-8Z" fill="#221318" opacity=".22"/>
+</svg>
